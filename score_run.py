@@ -27,6 +27,18 @@ from scorers import answer_in_context, failure_label, reference_sentence, string
 # RAGAS adds top_p/max_tokens on its own (seen in the Phase 0 spike); these are ours.
 JUDGE_SETTINGS = {"temperature": 0, "reasoning_effort": "none"}
 FACTUAL_MODE = "recall"  # short gold answers: "does the response contain the gold fact?"
+OLLAMA_LOG = Path.home() / ".ollama/logs/server.log"
+TRUNCATION_MARKER = "truncating input prompt"
+
+
+def count_truncations(log_text: str) -> int:
+    """Ollama silently truncates prompts longer than its context window; the only trace
+    is a WARN line in its server log (docs/decisions/0005). Counted per scoring session."""
+    return sum(1 for line in log_text.splitlines() if TRUNCATION_MARKER in line)
+
+
+def read_log() -> str:
+    return OLLAMA_LOG.read_text(errors="replace") if OLLAMA_LOG.exists() else ""
 
 
 async def run_metric(coro_fn, **kwargs) -> dict:
@@ -91,6 +103,7 @@ async def main() -> None:
     answers = load_jsonl(args.run_dir / "answers.jsonl")
     out_path = args.run_dir / f"scores-{judge.replace(':', '_')}.jsonl"
     todo = pending(answers, load_jsonl(out_path))
+    truncations_before = count_truncations(read_log())
     deadline = time.monotonic() + args.max_minutes * 60
     print(f"{len(answers) - len(todo)} already scored, {len(todo)} to go")
 
@@ -118,6 +131,9 @@ async def main() -> None:
               f"faith={row['faithfulness']['value']} recall={row['context_recall']['value']} "
               f"fact={row['factual_correctness']['value']} ({row['faithfulness']['status']})")
 
+    truncated = count_truncations(read_log()) - truncations_before
+    if truncated:
+        print(f"WARNING: Ollama truncated {truncated} judge prompt(s) this session; scores are INVALID")
     rows = load_jsonl(out_path)
     statuses = Counter(f"{m}:{r[m]['status'].split(':')[0]}" for r in rows
                        for m in ("faithfulness", "context_recall", "factual_correctness"))
@@ -125,7 +141,8 @@ async def main() -> None:
         "answers_run": args.run_dir.name, "scored": len(rows), "of": len(answers),
         "judge_model": judge, "judge_settings_requested": JUDGE_SETTINGS,
         "judge_settings_sent_this_session": sorted({json.dumps(s, sort_keys=True) for s in sent}),
-        "factual_correctness_mode": FACTUAL_MODE, "status_counts": dict(sorted(statuses.items())),
+        "factual_correctness_mode": FACTUAL_MODE,
+        "ollama_truncations_this_session": truncated, "status_counts": dict(sorted(statuses.items())),
         "versions": {p: version(p) for p in ("ragas", "langchain-community", "openai")},
     }
     (args.run_dir / f"scoring-manifest-{judge.replace(':', '_')}.json").write_text(json.dumps(manifest, indent=1) + "\n")

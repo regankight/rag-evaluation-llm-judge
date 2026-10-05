@@ -1,0 +1,4 @@
+FROM qwen3:14b
+# Ollama loads models with a small default context window and silently truncates longer
+# prompts (measured: ~6,000 words in -> 2,050 prompt tokens). Pin it. See docs/decisions/0005.
+PARAMETER num_ctx 8192

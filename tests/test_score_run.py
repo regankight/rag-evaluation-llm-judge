@@ -60,3 +60,12 @@ def test_deterministic_scores_unanswerable_has_no_correctness():
     s = deterministic_scores(answer("unanswerable", "It was 1948.", [], ["Some text."]))
     assert s["string_match"] is None and s["answer_in_context"] is None
     assert s["failure_label_string_match"] == "unanswerable"
+
+
+def test_truncation_warnings_are_counted():
+    from score_run import count_truncations
+    log = ('time=1 level=WARN msg="truncating input prompt" limit=4098 prompt=8910 keep=4 new=4098\n'
+           "slot release: n_tokens = 2052, truncated = 0\n"
+           'time=2 level=WARN msg="truncating input prompt" limit=2050 prompt=28910\n')
+    assert count_truncations(log) == 2
+    assert count_truncations("") == 0
