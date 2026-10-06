@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Blind Answer Review</title>
+<style>
+  :root { --bg:#fbfaf7; --panel:#ffffff; --ink:#1d1d1f; --muted:#6b6b70; --line:#e3e1dc;
+          --accent:#2f5d8a; --accent-ink:#ffffff; --sel:#e6eef7; --ok:#2e7d4f; --warn:#a15c00; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#17181a; --panel:#202124; --ink:#ececec;
+          --muted:#a0a0a6; --line:#34363a; --accent:#7fb0e0; --accent-ink:#0f1720; --sel:#26364a;
+          --ok:#6cc08b; --warn:#e0a85c; } }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink);
+         font:16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  main { max-width:860px; margin:0 auto; padding:16px; }
+  h1 { font-size:20px; margin:8px 0 4px; }
+  .muted { color:var(--muted); font-size:14px; }
+  nav { display:flex; gap:8px; margin:12px 0 16px; flex-wrap:wrap; }
+  nav button, .btn { border:1px solid var(--line); background:var(--panel); color:var(--ink);
+         padding:8px 14px; border-radius:8px; font:inherit; cursor:pointer; }
+  nav button.on { background:var(--accent); color:var(--accent-ink); border-color:var(--accent); }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:16px; margin-bottom:12px; }
+  .label { font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin:0 0 4px; }
+  .q { font-size:18px; font-weight:600; }
+  .answer { font-size:17px; white-space:pre-wrap; }
+  .passage { border-top:1px solid var(--line); padding:8px 0; font-size:14px; }
+  .passage b { color:var(--muted); }
+  .choices { display:flex; gap:8px; flex-wrap:wrap; margin:6px 0 12px; }
+  .choices button { border:1px solid var(--line); background:var(--panel); color:var(--ink);
+         padding:8px 12px; border-radius:8px; font:inherit; cursor:pointer; }
+  .choices button.sel { background:var(--sel); border-color:var(--accent); font-weight:600; }
+  .row { display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; }
+  .gold { border-left:4px solid var(--accent); padding-left:12px; }
+  .note { width:100%; min-height:56px; font:inherit; padding:8px; border-radius:8px;
+          border:1px solid var(--line); background:var(--bg); color:var(--ink); }
+  .done { color:var(--ok); font-weight:600; }
+  .warn { color:var(--warn); }
+  kbd { border:1px solid var(--line); border-radius:4px; padding:0 5px; font-size:13px; }
+  .hidden { display:none; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Blind answer review</h1>
+  <div class="muted">Your labels save automatically in this browser. When finished, use <b>Export</b> to download them.</div>
+  <nav>
+    <button id="tabA">Part A · Refused or answered?</button>
+    <button id="tabB">Part B · Answer review</button>
+    <button id="tabE">Export</button>
+  </nav>
+
+  <section id="A" class="hidden">
+    <div class="card muted">
+      Label each answer: did it <b>refuse</b> (decline to answer the question asked) or <b>answer</b>?
+      If it says the context lacks the answer but <b>still offers a candidate answer</b> (e.g. a hedged date), that counts as <b>Answered</b>.
+      Keys: <kbd>R</kbd> refused · <kbd>A</kbd> answered · <kbd>←</kbd> <kbd>→</kbd> move.
+    </div>
+    <div class="card">
+      <div class="row"><span class="label" id="aPos"></span><span class="label" id="aProg"></span></div>
+      <p class="label">Question</p><div class="q" id="aQ"></div>
+      <p class="label" style="margin-top:12px">Answer</p><div class="answer" id="aAns"></div>
+      <div class="choices" style="margin-top:14px">
+        <button data-a="refused">Refused (R)</button><button data-a="answered">Answered (A)</button>
+      </div>
+      <div class="row"><button class="btn" id="aPrev">← Previous</button><button class="btn" id="aNext">Next →</button></div>
+    </div>
+  </section>
+
+  <section id="B" class="hidden">
+    <div class="card muted">
+      Judge the answer using the question, the passages and your own knowledge, <b>before</b> seeing the gold answer.
+      Lock your verdict to reveal the gold answer, then rate the gold answer itself.
+    </div>
+    <div class="card">
+      <div class="row"><span class="label" id="bPos"></span><span class="label" id="bProg"></span></div>
+      <p class="label">Question</p><div class="q" id="bQ"></div>
+      <p class="label" style="margin-top:12px">Answer</p><div class="answer" id="bAns"></div>
+    </div>
+    <div class="card">
+      <p class="label">1 · Is the answer correct?</p>
+      <div class="choices" id="verdict">
+        <button data-v="correct">Correct</button><button data-v="partly">Partly correct</button>
+        <button data-v="incorrect">Incorrect</button><button data-v="refused">Refused</button>
+        <button data-v="cannot_tell">Can't tell</button>
+      </div>
+      <p class="label">2 · Is it supported by the passages below?</p>
+      <div class="choices" id="supported">
+        <button data-s="yes">Yes</button><button data-s="partly">Partly</button>
+        <button data-s="no">No</button><button data-s="na">N/A (refused)</button>
+      </div>
+      <button class="btn" id="lock">Lock verdict &amp; reveal gold answer</button>
+      <div id="reveal" class="hidden" style="margin-top:14px">
+        <div class="gold"><p class="label">Gold answer (dataset)</p><div id="goldText"></div></div>
+        <p class="label" style="margin-top:12px">3 · Is the gold answer itself right?</p>
+        <div class="choices" id="goldq">
+          <button data-g="right">Right</button><button data-g="wrong">Wrong</button><button data-g="ambiguous">Ambiguous</button>
+        </div>
+        <div id="changed" class="warn hidden" style="font-size:14px">You changed a locked verdict; that's recorded.</div>
+      </div>
+      <p class="label" style="margin-top:12px">Note (optional)</p>
+      <textarea class="note" id="note" placeholder="Anything worth remembering about this one"></textarea>
+      <div class="row" style="margin-top:12px"><button class="btn" id="bPrev">← Previous</button><button class="btn" id="bNext">Next →</button></div>
+    </div>
+    <div class="card"><p class="label">Retrieved passages</p><div id="bPass"></div></div>
+  </section>
+
+  <section id="E" class="hidden">
+    <div class="card">
+      <div id="eStatus"></div>
+      <p class="muted">Downloads <b>review-results.json</b> to your Downloads folder. You can export partway through and again at the end.</p>
+      <button class="btn" id="export">Download review-results.json</button>
+    </div>
+  </section>
+</main>
+<script>
+/*DATA*/
+const KEY = "blind-review-v1";
+let state = { a: {}, b: {}, posA: 0, posB: 0, tab: "A" };
+try { const s = JSON.parse(localStorage.getItem(KEY) || "null"); if (s) state = Object.assign(state, s); } catch (e) {}
+function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+const $ = (id) => document.getElementById(id);
+
+function show(tab) {
+  state.tab = tab; save();
+  for (const t of ["A", "B", "E"]) { $(t).classList.toggle("hidden", t !== tab); $("tab" + t).classList.toggle("on", t === tab); }
+  if (tab === "A") renderA(); if (tab === "B") renderB(); if (tab === "E") renderE();
+}
+$("tabA").onclick = () => show("A"); $("tabB").onclick = () => show("B"); $("tabE").onclick = () => show("E");
+
+function renderA() {
+  const it = PART_A[state.posA];
+  $("aPos").textContent = `Item ${state.posA + 1} of ${PART_A.length}`;
+  $("aProg").textContent = `${Object.keys(state.a).length} labeled`;
+  $("aQ").textContent = it.question; $("aAns").textContent = it.answer;
+  document.querySelectorAll("[data-a]").forEach(b => b.classList.toggle("sel", state.a[it.id] === b.dataset.a));
+}
+function labelA(v) { state.a[PART_A[state.posA].id] = v; if (state.posA < PART_A.length - 1) state.posA++; save(); renderA(); }
+document.querySelectorAll("[data-a]").forEach(b => b.onclick = () => labelA(b.dataset.a));
+$("aPrev").onclick = () => { state.posA = Math.max(0, state.posA - 1); save(); renderA(); };
+$("aNext").onclick = () => { state.posA = Math.min(PART_A.length - 1, state.posA + 1); save(); renderA(); };
+
+function cur() { const it = PART_B[state.posB]; state.b[it.id] = state.b[it.id] || {}; return [it, state.b[it.id]]; }
+function renderB() {
+  const [it, r] = cur();
+  $("bPos").textContent = `Item ${state.posB + 1} of ${PART_B.length}`;
+  $("bProg").textContent = `${Object.values(state.b).filter(x => x.gold_quality).length} complete`;
+  $("bQ").textContent = it.question; $("bAns").textContent = it.answer;
+  $("bPass").innerHTML = "";
+  if (!it.passages.length) $("bPass").textContent = "(no passages were retrieved)";
+  for (const p of it.passages) { const d = document.createElement("div"); d.className = "passage";
+    const b = document.createElement("b"); b.textContent = `[${p.rank}] ${p.title}: `; d.append(b, p.text); $("bPass").append(d); }
+  document.querySelectorAll("[data-v]").forEach(b => b.classList.toggle("sel", r.verdict === b.dataset.v));
+  document.querySelectorAll("[data-s]").forEach(b => b.classList.toggle("sel", r.supported === b.dataset.s));
+  document.querySelectorAll("[data-g]").forEach(b => b.classList.toggle("sel", r.gold_quality === b.dataset.g));
+  $("lock").classList.toggle("hidden", !!r.locked);
+  $("lock").disabled = !(r.verdict && r.supported);
+  $("reveal").classList.toggle("hidden", !r.locked);
+  $("changed").classList.toggle("hidden", !r.changed_after_reveal);
+  $("goldText").textContent = it.label === "unanswerable"
+    ? "No gold answer: all three annotators marked this question as not answerable from its article. Rate whether that label is right."
+    : it.gold.join("  ·  ");
+  $("note").value = r.note || "";
+}
+function setB(field, v) {
+  const [, r] = cur();
+  if (r.locked && (field === "verdict" || field === "supported") && r[field] !== v) r.changed_after_reveal = true;
+  r[field] = v; save(); renderB();
+}
+document.querySelectorAll("[data-v]").forEach(b => b.onclick = () => setB("verdict", b.dataset.v));
+document.querySelectorAll("[data-s]").forEach(b => b.onclick = () => setB("supported", b.dataset.s));
+document.querySelectorAll("[data-g]").forEach(b => b.onclick = () => setB("gold_quality", b.dataset.g));
+$("lock").onclick = () => { const [, r] = cur(); r.locked = true; r.locked_at = new Date().toISOString();
+  r.verdict_at_lock = r.verdict; r.supported_at_lock = r.supported; save(); renderB(); };
+$("note").oninput = (e) => { const [, r] = cur(); r.note = e.target.value; save(); };
+$("bPrev").onclick = () => { state.posB = Math.max(0, state.posB - 1); save(); renderB(); };
+$("bNext").onclick = () => { state.posB = Math.min(PART_B.length - 1, state.posB + 1); save(); renderB(); };
+
+function renderE() {
+  const a = Object.keys(state.a).length, b = Object.values(state.b).filter(x => x.gold_quality).length;
+  $("eStatus").innerHTML = `Part A: <b>${a}</b> of ${PART_A.length} &nbsp;·&nbsp; Part B: <b>${b}</b> of ${PART_B.length} complete` +
+    (a === PART_A.length && b === PART_B.length ? ` &nbsp;<span class="done">All done</span>` : "");
+}
+$("export").onclick = () => {
+  const blob = new Blob([JSON.stringify({ exported_at: new Date().toISOString(), part_a: state.a, part_b: state.b }, null, 1)],
+                        { type: "application/json" });
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "review-results.json"; a.click();
+};
+
+document.addEventListener("keydown", (e) => {
+  if (state.tab !== "A" || e.target.tagName === "TEXTAREA") return;
+  if (e.key === "r" || e.key === "R") labelA("refused");
+  if (e.key === "a" || e.key === "A") labelA("answered");
+  if (e.key === "ArrowRight") $("aNext").click();
+  if (e.key === "ArrowLeft") $("aPrev").click();
+});
+show(state.tab);
+</script>
+</body>
+</html>

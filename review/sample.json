@@ -1,0 +1,1007 @@
+{
+ "seed": 20261006,
+ "runs": {
+  "v1-baseline": "results/held_out-v1-baseline-20261006T064508Z",
+  "v2-not-in-context": "results/held_out-v2-not-in-context-20261006T064838Z"
+ },
+ "part_a": [
+  {
+   "id": "A000",
+   "qid": "08bb22ad9c65"
+  },
+  {
+   "id": "A001",
+   "qid": "c6b7080ca962"
+  },
+  {
+   "id": "A002",
+   "qid": "6fd95ef9af67"
+  },
+  {
+   "id": "A003",
+   "qid": "ed55b4e1800d"
+  },
+  {
+   "id": "A004",
+   "qid": "21c94e52b406"
+  },
+  {
+   "id": "A005",
+   "qid": "6442737539d5"
+  },
+  {
+   "id": "A006",
+   "qid": "c4648005d657"
+  },
+  {
+   "id": "A007",
+   "qid": "4452a52fc0a1"
+  },
+  {
+   "id": "A008",
+   "qid": "bdc214d988e3"
+  },
+  {
+   "id": "A009",
+   "qid": "82d593bc87dc"
+  },
+  {
+   "id": "A010",
+   "qid": "aa6b0a423f49"
+  },
+  {
+   "id": "A011",
+   "qid": "8fea7b906305"
+  },
+  {
+   "id": "A012",
+   "qid": "1517a1ffa624"
+  },
+  {
+   "id": "A013",
+   "qid": "aa4d685fec05"
+  },
+  {
+   "id": "A014",
+   "qid": "63e47eda408d"
+  },
+  {
+   "id": "A015",
+   "qid": "d1fec6236b67"
+  },
+  {
+   "id": "A016",
+   "qid": "e56914ddbd06"
+  },
+  {
+   "id": "A017",
+   "qid": "78015d59be0f"
+  },
+  {
+   "id": "A018",
+   "qid": "c59aa8d1c89f"
+  },
+  {
+   "id": "A019",
+   "qid": "fe432cb5dca6"
+  },
+  {
+   "id": "A020",
+   "qid": "f292d85db621"
+  },
+  {
+   "id": "A021",
+   "qid": "f75eb0b6e063"
+  },
+  {
+   "id": "A022",
+   "qid": "fcb7d752d3e5"
+  },
+  {
+   "id": "A023",
+   "qid": "128ae29aa872"
+  },
+  {
+   "id": "A024",
+   "qid": "97b675d29c80"
+  },
+  {
+   "id": "A025",
+   "qid": "4702dcd3a440"
+  },
+  {
+   "id": "A026",
+   "qid": "e9c9ba5766ff"
+  },
+  {
+   "id": "A027",
+   "qid": "71cebb9ab24d"
+  },
+  {
+   "id": "A028",
+   "qid": "b8dc1110e3a5"
+  },
+  {
+   "id": "A029",
+   "qid": "ee8b5f4107af"
+  },
+  {
+   "id": "A030",
+   "qid": "dff399503840"
+  },
+  {
+   "id": "A031",
+   "qid": "5487b256d134"
+  },
+  {
+   "id": "A032",
+   "qid": "792acde48ae1"
+  },
+  {
+   "id": "A033",
+   "qid": "f6aa99cd27a1"
+  },
+  {
+   "id": "A034",
+   "qid": "1c57879252d0"
+  },
+  {
+   "id": "A035",
+   "qid": "950770a24892"
+  },
+  {
+   "id": "A036",
+   "qid": "da98fd81bf63"
+  },
+  {
+   "id": "A037",
+   "qid": "8d15339331ef"
+  },
+  {
+   "id": "A038",
+   "qid": "68445531fed6"
+  },
+  {
+   "id": "A039",
+   "qid": "fc04fe20e604"
+  },
+  {
+   "id": "A040",
+   "qid": "7279148790ac"
+  },
+  {
+   "id": "A041",
+   "qid": "ab7039e147a8"
+  },
+  {
+   "id": "A042",
+   "qid": "1960e7741e64"
+  },
+  {
+   "id": "A043",
+   "qid": "aeb13d68980b"
+  },
+  {
+   "id": "A044",
+   "qid": "f87c00dd3bd6"
+  },
+  {
+   "id": "A045",
+   "qid": "bc1c5d85bfa2"
+  },
+  {
+   "id": "A046",
+   "qid": "2216cafa53ae"
+  },
+  {
+   "id": "A047",
+   "qid": "997c956b647d"
+  },
+  {
+   "id": "A048",
+   "qid": "106646c396c9"
+  },
+  {
+   "id": "A049",
+   "qid": "bde401939dd5"
+  },
+  {
+   "id": "A050",
+   "qid": "4568515eb4bf"
+  },
+  {
+   "id": "A051",
+   "qid": "d670d1d2b15a"
+  },
+  {
+   "id": "A052",
+   "qid": "355f03777d89"
+  },
+  {
+   "id": "A053",
+   "qid": "d34a19c48f90"
+  },
+  {
+   "id": "A054",
+   "qid": "3989c66fd004"
+  },
+  {
+   "id": "A055",
+   "qid": "1e29569abfb7"
+  },
+  {
+   "id": "A056",
+   "qid": "075c5daa03a9"
+  },
+  {
+   "id": "A057",
+   "qid": "c1f00e3ddd45"
+  },
+  {
+   "id": "A058",
+   "qid": "e2fe2ad842a5"
+  },
+  {
+   "id": "A059",
+   "qid": "cd922ab8b1d7"
+  },
+  {
+   "id": "A060",
+   "qid": "cfbc5b0983f3"
+  },
+  {
+   "id": "A061",
+   "qid": "d8c0f901b426"
+  },
+  {
+   "id": "A062",
+   "qid": "8ecbdb8bc5be"
+  },
+  {
+   "id": "A063",
+   "qid": "0798da522ff8"
+  },
+  {
+   "id": "A064",
+   "qid": "5f8f54d0802f"
+  },
+  {
+   "id": "A065",
+   "qid": "5987390b7aee"
+  },
+  {
+   "id": "A066",
+   "qid": "411c575778f2"
+  },
+  {
+   "id": "A067",
+   "qid": "fb5fe8dd7dea"
+  },
+  {
+   "id": "A068",
+   "qid": "e30e4fa20b8a"
+  },
+  {
+   "id": "A069",
+   "qid": "8f5e18f87d66"
+  },
+  {
+   "id": "A070",
+   "qid": "3291f81a58c5"
+  },
+  {
+   "id": "A071",
+   "qid": "e145aaa6c42d"
+  },
+  {
+   "id": "A072",
+   "qid": "8ebfa10bcc22"
+  },
+  {
+   "id": "A073",
+   "qid": "5ec93a2dc808"
+  },
+  {
+   "id": "A074",
+   "qid": "d5a211df3546"
+  },
+  {
+   "id": "A075",
+   "qid": "64729a42f78d"
+  },
+  {
+   "id": "A076",
+   "qid": "5332f5aeb77f"
+  },
+  {
+   "id": "A077",
+   "qid": "3ca36c0854da"
+  },
+  {
+   "id": "A078",
+   "qid": "6c432392fdbe"
+  },
+  {
+   "id": "A079",
+   "qid": "d0b28e017c9f"
+  },
+  {
+   "id": "A080",
+   "qid": "5556f0418eaa"
+  },
+  {
+   "id": "A081",
+   "qid": "a330475a2d3a"
+  },
+  {
+   "id": "A082",
+   "qid": "fad9223de23c"
+  },
+  {
+   "id": "A083",
+   "qid": "d40643962c01"
+  },
+  {
+   "id": "A084",
+   "qid": "d39b6275699d"
+  },
+  {
+   "id": "A085",
+   "qid": "183068149444"
+  },
+  {
+   "id": "A086",
+   "qid": "c0d2669f91d9"
+  },
+  {
+   "id": "A087",
+   "qid": "5729e4c204e7"
+  },
+  {
+   "id": "A088",
+   "qid": "7cae65938681"
+  },
+  {
+   "id": "A089",
+   "qid": "7a7a96330e7b"
+  },
+  {
+   "id": "A090",
+   "qid": "e8c09b898090"
+  },
+  {
+   "id": "A091",
+   "qid": "1803de2b86cf"
+  },
+  {
+   "id": "A092",
+   "qid": "e57e961a74b0"
+  },
+  {
+   "id": "A093",
+   "qid": "b6dbbf2e042b"
+  },
+  {
+   "id": "A094",
+   "qid": "f0a4756289a1"
+  },
+  {
+   "id": "A095",
+   "qid": "76c1c7cd16d3"
+  },
+  {
+   "id": "A096",
+   "qid": "232735cd7399"
+  },
+  {
+   "id": "A097",
+   "qid": "c8d88e7e89db"
+  },
+  {
+   "id": "A098",
+   "qid": "db2d9e0d45a1"
+  },
+  {
+   "id": "A099",
+   "qid": "bf4348eb7b16"
+  },
+  {
+   "id": "A100",
+   "qid": "c368a8a5d872"
+  },
+  {
+   "id": "A101",
+   "qid": "e584f667da38"
+  },
+  {
+   "id": "A102",
+   "qid": "479053f81ef1"
+  },
+  {
+   "id": "A103",
+   "qid": "d43199c7d2c7"
+  },
+  {
+   "id": "A104",
+   "qid": "3ff5cf89cb9e"
+  },
+  {
+   "id": "A105",
+   "qid": "91ae3537980a"
+  },
+  {
+   "id": "A106",
+   "qid": "132b983d37ed"
+  },
+  {
+   "id": "A107",
+   "qid": "ffe388920165"
+  },
+  {
+   "id": "A108",
+   "qid": "04c76f5379ae"
+  },
+  {
+   "id": "A109",
+   "qid": "77c13d0b2b6b"
+  },
+  {
+   "id": "A110",
+   "qid": "05caf338a910"
+  },
+  {
+   "id": "A111",
+   "qid": "04b77c2c33a5"
+  },
+  {
+   "id": "A112",
+   "qid": "05d839860a55"
+  },
+  {
+   "id": "A113",
+   "qid": "099881d8fa31"
+  },
+  {
+   "id": "A114",
+   "qid": "b2d898b247d0"
+  },
+  {
+   "id": "A115",
+   "qid": "da69b950727e"
+  },
+  {
+   "id": "A116",
+   "qid": "06417831ee4e"
+  },
+  {
+   "id": "A117",
+   "qid": "f5e3e26d5a3c"
+  },
+  {
+   "id": "A118",
+   "qid": "2d027017e5bc"
+  },
+  {
+   "id": "A119",
+   "qid": "06158b4339cc"
+  },
+  {
+   "id": "A120",
+   "qid": "990aced1799d"
+  },
+  {
+   "id": "A121",
+   "qid": "7c58e2ff3f50"
+  },
+  {
+   "id": "A122",
+   "qid": "b3bb14abb872"
+  },
+  {
+   "id": "A123",
+   "qid": "3891b58e2a3c"
+  },
+  {
+   "id": "A124",
+   "qid": "4d22caa144a0"
+  },
+  {
+   "id": "A125",
+   "qid": "81dbdb1a6b39"
+  },
+  {
+   "id": "A126",
+   "qid": "01c88a2f572b"
+  },
+  {
+   "id": "A127",
+   "qid": "6cf4419319fa"
+  },
+  {
+   "id": "A128",
+   "qid": "dbb7dabe0881"
+  },
+  {
+   "id": "A129",
+   "qid": "b249c18b8e3d"
+  },
+  {
+   "id": "A130",
+   "qid": "573357562130"
+  },
+  {
+   "id": "A131",
+   "qid": "9164efed1fb3"
+  },
+  {
+   "id": "A132",
+   "qid": "2f79faabaf7b"
+  },
+  {
+   "id": "A133",
+   "qid": "5362a30d0836"
+  },
+  {
+   "id": "A134",
+   "qid": "4b4be4f74a0f"
+  },
+  {
+   "id": "A135",
+   "qid": "348a4ad1d0d8"
+  },
+  {
+   "id": "A136",
+   "qid": "5688f66b5cc4"
+  },
+  {
+   "id": "A137",
+   "qid": "0414581edd50"
+  },
+  {
+   "id": "A138",
+   "qid": "dad5b23f5f93"
+  },
+  {
+   "id": "A139",
+   "qid": "f700e7b19c06"
+  },
+  {
+   "id": "A140",
+   "qid": "2a4c6d466665"
+  },
+  {
+   "id": "A141",
+   "qid": "e45bbc4b9fb6"
+  },
+  {
+   "id": "A142",
+   "qid": "35e72e151843"
+  },
+  {
+   "id": "A143",
+   "qid": "7cc2db7c71e4"
+  },
+  {
+   "id": "A144",
+   "qid": "23d4f62efd24"
+  },
+  {
+   "id": "A145",
+   "qid": "fb41d7e20158"
+  },
+  {
+   "id": "A146",
+   "qid": "88bc57dad924"
+  },
+  {
+   "id": "A147",
+   "qid": "1b72f45290e0"
+  },
+  {
+   "id": "A148",
+   "qid": "ac757593943c"
+  },
+  {
+   "id": "A149",
+   "qid": "688d0d165fe6"
+  }
+ ],
+ "part_b": [
+  {
+   "id": "B000",
+   "qid": "f292d85db621",
+   "prompt": "v1-baseline",
+   "label": "answerable"
+  },
+  {
+   "id": "B001",
+   "qid": "e56914ddbd06",
+   "prompt": "v1-baseline",
+   "label": "unanswerable"
+  },
+  {
+   "id": "B002",
+   "qid": "e2fe2ad842a5",
+   "prompt": "v1-baseline",
+   "label": "answerable"
+  },
+  {
+   "id": "B003",
+   "qid": "da98fd81bf63",
+   "prompt": "v1-baseline",
+   "label": "unanswerable"
+  },
+  {
+   "id": "B004",
+   "qid": "075c5daa03a9",
+   "prompt": "v2-not-in-context",
+   "label": "unanswerable"
+  },
+  {
+   "id": "B005",
+   "qid": "f6aa99cd27a1",
+   "prompt": "v1-baseline",
+   "label": "answerable"
+  },
+  {
+   "id": "B006",
+   "qid": "9164efed1fb3",
+   "prompt": "v1-baseline",
+   "label": "unanswerable"
+  },
+  {
+   "id": "B007",
+   "qid": "0798da522ff8",
+   "prompt": "v2-not-in-context",
+   "label": "answerable"
+  },
+  {
+   "id": "B008",
+   "qid": "d5a211df3546",
+   "prompt": "v2-not-in-context",
+   "label": "unanswerable"
+  },
+  {
+   "id": "B009",
+   "qid": "3ff5cf89cb9e",
+   "prompt": "v2-not-in-context",
+   "label": "answerable"
+  },
+  {
+   "id": "B010",
+   "qid": "e57e961a74b0",
+   "prompt": "v2-not-in-context",
+   "label": "answerable"
+  },
+  {
+   "id": "B011",
+   "qid": "88bc57dad924",
+   "prompt": "v1-baseline",
+   "label": "answerable"
+  },
+  {
+   "id": "B012",
+   "qid": "ee8b5f4107af",
+   "prompt": "v2-not-in-context",
+   "label": "answerable"
+  },
+  {
+   "id": "B013",
+   "qid": "8d15339331ef",
+   "prompt": "v2-not-in-context",
+   "label": "answerable"
+  },
+  {
+   "id": "B014",
+   "qid": "7cc2db7c71e4",
+   "prompt": "v2-not-in-context",
+   "label": "answerable"
+  },
+  {
+   "id": "B015",
+   "qid": "3ca36c0854da",
+   "prompt": "v1-baseline",
+   "label": "unanswerable"
+  },
+  {
+   "id": "B016",
+   "qid": "d40643962c01",
+   "prompt": "v2-not-in-context",
+   "label": "answerable"
+  },
+  {
+   "id": "B017",
+   "qid": "8fea7b906305",
+   "prompt": "v2-not-in-context",
+   "label": "answerable"
+  },
+  {
+   "id": "B018",
+   "qid": "e30e4fa20b8a",
+   "prompt": "v2-not-in-context",
+   "label": "unanswerable"
+  },
+  {
+   "id": "B019",
+   "qid": "6c432392fdbe",
+   "prompt": "v2-not-in-context",
+   "label": "answerable"
+  },
+  {
+   "id": "B020",
+   "qid": "6cf4419319fa",
+   "prompt": "v2-not-in-context",
+   "label": "answerable"
+  },
+  {
+   "id": "B021",
+   "qid": "6442737539d5",
+   "prompt": "v1-baseline",
+   "label": "answerable"
+  },
+  {
+   "id": "B022",
+   "qid": "f87c00dd3bd6",
+   "prompt": "v1-baseline",
+   "label": "answerable"
+  },
+  {
+   "id": "B023",
+   "qid": "b2d898b247d0",
+   "prompt": "v1-baseline",
+   "label": "answerable"
+  },
+  {
+   "id": "B024",
+   "qid": "08bb22ad9c65",
+   "prompt": "v2-not-in-context",
+   "label": "answerable"
+  },
+  {
+   "id": "B025",
+   "qid": "68445531fed6",
+   "prompt": "v1-baseline",
+   "label": "answerable"
+  },
+  {
+   "id": "B026",
+   "qid": "bf4348eb7b16",
+   "prompt": "v1-baseline",
+   "label": "answerable"
+  },
+  {
+   "id": "B027",
+   "qid": "35e72e151843",
+   "prompt": "v1-baseline",
+   "label": "answerable"
+  },
+  {
+   "id": "B028",
+   "qid": "f5e3e26d5a3c",
+   "prompt": "v1-baseline",
+   "label": "answerable"
+  },
+  {
+   "id": "B029",
+   "qid": "997c956b647d",
+   "prompt": "v2-not-in-context",
+   "label": "answerable"
+  },
+  {
+   "id": "B030",
+   "qid": "c8d88e7e89db",
+   "prompt": "v1-baseline",
+   "label": "answerable"
+  },
+  {
+   "id": "B031",
+   "qid": "b3bb14abb872",
+   "prompt": "v2-not-in-context",
+   "label": "unanswerable"
+  },
+  {
+   "id": "B032",
+   "qid": "a330475a2d3a",
+   "prompt": "v1-baseline",
+   "label": "answerable"
+  },
+  {
+   "id": "B033",
+   "qid": "7c58e2ff3f50",
+   "prompt": "v2-not-in-context",
+   "label": "answerable"
+  },
+  {
+   "id": "B034",
+   "qid": "4b4be4f74a0f",
+   "prompt": "v2-not-in-context",
+   "label": "unanswerable"
+  },
+  {
+   "id": "B035",
+   "qid": "b249c18b8e3d",
+   "prompt": "v2-not-in-context",
+   "label": "answerable"
+  },
+  {
+   "id": "B036",
+   "qid": "bc1c5d85bfa2",
+   "prompt": "v1-baseline",
+   "label": "answerable"
+  },
+  {
+   "id": "B037",
+   "qid": "8f5e18f87d66",
+   "prompt": "v1-baseline",
+   "label": "answerable"
+  },
+  {
+   "id": "B038",
+   "qid": "71cebb9ab24d",
+   "prompt": "v1-baseline",
+   "label": "answerable"
+  },
+  {
+   "id": "B039",
+   "qid": "2216cafa53ae",
+   "prompt": "v1-baseline",
+   "label": "unanswerable"
+  },
+  {
+   "id": "B040",
+   "qid": "6fd95ef9af67",
+   "prompt": "v1-baseline",
+   "label": "unanswerable"
+  },
+  {
+   "id": "B041",
+   "qid": "db2d9e0d45a1",
+   "prompt": "v1-baseline",
+   "label": "answerable"
+  },
+  {
+   "id": "B042",
+   "qid": "78015d59be0f",
+   "prompt": "v2-not-in-context",
+   "label": "answerable"
+  },
+  {
+   "id": "B043",
+   "qid": "77c13d0b2b6b",
+   "prompt": "v1-baseline",
+   "label": "unanswerable"
+  },
+  {
+   "id": "B044",
+   "qid": "5729e4c204e7",
+   "prompt": "v1-baseline",
+   "label": "answerable"
+  },
+  {
+   "id": "B045",
+   "qid": "2f79faabaf7b",
+   "prompt": "v1-baseline",
+   "label": "answerable"
+  },
+  {
+   "id": "B046",
+   "qid": "232735cd7399",
+   "prompt": "v2-not-in-context",
+   "label": "answerable"
+  },
+  {
+   "id": "B047",
+   "qid": "d670d1d2b15a",
+   "prompt": "v1-baseline",
+   "label": "answerable"
+  },
+  {
+   "id": "B048",
+   "qid": "aa6b0a423f49",
+   "prompt": "v2-not-in-context",
+   "label": "answerable"
+  },
+  {
+   "id": "B049",
+   "qid": "7279148790ac",
+   "prompt": "v2-not-in-context",
+   "label": "answerable"
+  },
+  {
+   "id": "B050",
+   "qid": "aeb13d68980b",
+   "prompt": "v1-baseline",
+   "label": "answerable"
+  },
+  {
+   "id": "B051",
+   "qid": "4568515eb4bf",
+   "prompt": "v2-not-in-context",
+   "label": "answerable"
+  },
+  {
+   "id": "B052",
+   "qid": "cd922ab8b1d7",
+   "prompt": "v2-not-in-context",
+   "label": "unanswerable"
+  },
+  {
+   "id": "B053",
+   "qid": "688d0d165fe6",
+   "prompt": "v2-not-in-context",
+   "label": "answerable"
+  },
+  {
+   "id": "B054",
+   "qid": "5ec93a2dc808",
+   "prompt": "v1-baseline",
+   "label": "answerable"
+  },
+  {
+   "id": "B055",
+   "qid": "e45bbc4b9fb6",
+   "prompt": "v2-not-in-context",
+   "label": "answerable"
+  },
+  {
+   "id": "B056",
+   "qid": "82d593bc87dc",
+   "prompt": "v2-not-in-context",
+   "label": "unanswerable"
+  },
+  {
+   "id": "B057",
+   "qid": "ed55b4e1800d",
+   "prompt": "v2-not-in-context",
+   "label": "answerable"
+  },
+  {
+   "id": "B058",
+   "qid": "573357562130",
+   "prompt": "v1-baseline",
+   "label": "answerable"
+  },
+  {
+   "id": "B059",
+   "qid": "2d027017e5bc",
+   "prompt": "v2-not-in-context",
+   "label": "answerable"
+  },
+  {
+   "id": "B060",
+   "qid": "106646c396c9",
+   "prompt": "v1-baseline",
+   "label": "answerable"
+  },
+  {
+   "id": "B061",
+   "qid": "1517a1ffa624",
+   "prompt": "v2-not-in-context",
+   "label": "answerable"
+  },
+  {
+   "id": "B062",
+   "qid": "c368a8a5d872",
+   "prompt": "v1-baseline",
+   "label": "answerable"
+  },
+  {
+   "id": "B063",
+   "qid": "76c1c7cd16d3",
+   "prompt": "v1-baseline",
+   "label": "unanswerable"
+  },
+  {
+   "id": "B064",
+   "qid": "e584f667da38",
+   "prompt": "v2-not-in-context",
+   "label": "unanswerable"
+  },
+  {
+   "id": "B065",
+   "qid": "950770a24892",
+   "prompt": "v2-not-in-context",
+   "label": "answerable"
+  }
+ ]
+}
