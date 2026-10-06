@@ -16,8 +16,7 @@ import json
 import random
 from pathlib import Path
 
-RUNS = {"v1-baseline": "results/held_out-v1-baseline-20261006T064508Z",
-        "v2-not-in-context": "results/held_out-v2-not-in-context-20261006T064838Z"}
+from runs import HELD_OUT as RUNS
 SEED = 20261006
 N_ANSWERABLE_PER_PROMPT = 25
 N_UNANSWERABLE_PER_PROMPT = 8

@@ -16,10 +16,9 @@ from pathlib import Path
 
 from scorers import ANSWERED, REFUSED, classify_response
 
-RUNS = {"v1": "results/held_out-v1-baseline-20261006T064508Z",
-        "v2": "results/held_out-v2-not-in-context-20261006T064838Z"}
-JUDGE = "qwen3-14b-8k"
-JUDGE_CORRECT_AT = 0.5  # same threshold as decision 0008
+from runs import HELD_OUT, JUDGE, JUDGE_CORRECT_AT, scores_file
+
+RUNS = {"v1": HELD_OUT["v1-baseline"], "v2": HELD_OUT["v2-not-in-context"]}
 SEED = 20261006
 B = 10_000  # bootstrap resamples
 
@@ -71,13 +70,13 @@ def load() -> dict:
     data = {}
     for v, d in RUNS.items():
         answers = {r["qid"]: r for r in load_jsonl(Path(d, "answers.jsonl"))}
-        scores = {r["qid"]: r for r in load_jsonl(Path(d, f"scores-{JUDGE}.jsonl"))}
+        scores = {r["qid"]: r for r in load_jsonl(Path(d, scores_file()))}
         data[v] = {q: {**answers[q], "scores": scores[q]} for q in answers}
     sample = json.loads(Path("review/sample.json").read_text())
     labels = json.loads(Path("review/review-results.json").read_text())["part_a"]
     human_v1 = {x["qid"]: labels[x["id"]] for x in sample["part_a"] if x["id"] in labels}
     return {"runs": data, "human_v1": human_v1,
-            "known_truth": load_jsonl(Path(f"known_truth/scores-{JUDGE}.jsonl"))}
+            "known_truth": load_jsonl(Path("known_truth", scores_file()))}
 
 
 def refusal(v: str, row: dict, human_v1: dict) -> str:

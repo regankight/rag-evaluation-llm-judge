@@ -19,13 +19,13 @@ import time
 from collections import defaultdict
 from pathlib import Path
 
+from runs import HELD_OUT, JUDGE, JUDGE_CORRECT_AT
 from scorers import normalize, reference_answer, string_match
 
 SEED = 20261007
 N_QUESTIONS = 60
 CASES = Path("known_truth/cases.jsonl")
 SCORES = Path("known_truth/scores-{judge}.jsonl")
-JUDGE_CORRECT_AT = 0.5  # fixed before scoring: AnswerAccuracy >= 0.5 counts as "judged correct"
 
 # variant -> (template, is_correct). {gold} is this question's answer, {other} another question's.
 VARIANTS = {
@@ -70,7 +70,7 @@ def load_jsonl(path: Path) -> list[dict]:
 
 def cmd_build() -> None:
     from samples import load_samples
-    run = Path("results/held_out-v1-baseline-20261006T064508Z/answers.jsonl")
+    run = Path(HELD_OUT["v1-baseline"], "answers.jsonl")
     held_out = set(load_samples()["splits"]["held_out"])
     qs = [r for r in load_jsonl(run) if r["label"] == "answerable" and r["qid"] in held_out]
     cases = build_cases([{k: r[k] for k in ("qid", "question", "gold_answers")} for r in qs])
@@ -129,7 +129,7 @@ def summarize(rows: list[dict]) -> dict:
 
 
 def cmd_report() -> None:
-    judge = os.environ.get("JUDGE_MODEL", "qwen3-14b-8k")
+    judge = os.environ.get("JUDGE_MODEL", JUDGE)
     rows = load_jsonl(Path(str(SCORES).format(judge=judge.replace(":", "_"))))
     print(f"{'variant':15} {'truth':8} {'n':>3} {'string match':>13} {'judge':>8} {'failed':>7}  judge values")
     for name, (_, correct) in VARIANTS.items():
