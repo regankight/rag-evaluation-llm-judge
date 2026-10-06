@@ -12,6 +12,8 @@ Held-out: 100 answerable + 50 unanswerable questions, answered by both prompts (
 | P4 | Mean answer accuracy, v2 − v1 | −0.10 to −0.03 | 0.54 | 0.4925 | **P4: held** (point estimate -0.048) | no (95% CI [-0.100, +0.003] includes 0: not established) |
 | P5 | Faithfulness on refusals | ≥50% of v2 refusals blank (NaN) | 0/31 NaN | 69/71 NaN | **P5: held** | yes |
 
+P3 with an alternative definition added after results (gold answer text in none of the retrieved passages, n=41): v1 75.6%, v2 29.3%. The pre-registered row above is unchanged.
+
 P4 by retrieval: gold passage retrieved +0.019 (n=52); not retrieved -0.120 (n=48).
 
 ## Borderline refusals ("refuses, then adds a related fact")
@@ -33,6 +35,12 @@ P4 by retrieval: gold passage retrieved +0.019 (n=52); not retrieved -0.120 (n=4
 |---|---|---|
 | string match: yes | 82 | 6 |
 | string match: no | 33 | 79 |
+
+## Context recall check (no extra judge calls)
+
+- Repeatability: 100/100 identical scores across v1 and v2 (100/100 had identical inputs).
+- Judge (≥ 0.5) vs gold passage retrieved: {'signal_True_judge_True': 50, 'signal_True_judge_False': 2, 'signal_False_judge_True': 10, 'signal_False_judge_False': 38}.
+- Judge vs gold passage *or* gold answer text retrieved: {'signal_True_judge_True': 56, 'signal_True_judge_False': 3, 'signal_False_judge_True': 4, 'signal_False_judge_False': 37}. Labels mark one passage as correct, so the answer often sits in another retrieved passage.
 
 ## Failure labels (judge correctness; retrieval = gold passage retrieved)
 

@@ -172,6 +172,18 @@
    "pct": 35.4
   }
  },
+ "P3_alt_answer_text_absent": {
+  "v1": {
+   "k": 31,
+   "n": 41,
+   "pct": 75.6
+  },
+  "v2": {
+   "k": 12,
+   "n": 41,
+   "pct": 29.3
+  }
+ },
  "P4": {
   "v1_mean": 0.54,
   "v2_mean": 0.4925,
@@ -206,6 +218,23 @@
    "scored": 2,
    "mean_when_scored": 1.0
   }
+ },
+ "context_recall_check": {
+  "vs_gold_passage_retrieved": {
+   "signal_True_judge_True": 50,
+   "signal_True_judge_False": 2,
+   "signal_False_judge_True": 10,
+   "signal_False_judge_False": 38
+  },
+  "vs_gold_passage_or_answer_text_retrieved": {
+   "signal_True_judge_True": 56,
+   "signal_True_judge_False": 3,
+   "signal_False_judge_True": 4,
+   "signal_False_judge_False": 37
+  },
+  "repeatable_v1_v2": 100,
+  "identical_inputs_v1_v2": 100,
+  "n": 100
  },
  "scorers_on_real_answers": {
   "n": 200,

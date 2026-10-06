@@ -136,6 +136,14 @@ def analyze(d: dict) -> dict:
     out["P2"] = {v: rate([R[v][q] == REFUSED for q in ret]) for v in runs}
     out["P3"] = {v: rate([R[v][q] == ANSWERED for q in miss]) for v in runs}
 
+    # P3 under an alternative retrieval definition (added after results; the pre-registered P3
+    # above is unchanged): "retrieval missed" = gold passage not retrieved AND the gold answer
+    # text appears in none of the retrieved passages. Gold labels mark only one passage as
+    # correct, so the original definition undercounts successful retrieval.
+    in_ctx = {q: bool(runs["v1"][q]["scores"]["answer_in_context"]) for q in ans}
+    miss_strict = [q for q in miss if not in_ctx[q]]
+    out["P3_alt_answer_text_absent"] = {v: rate([R[v][q] == ANSWERED for q in miss_strict]) for v in runs}
+
     # P4 accuracy cost (paired, answerable)
     acc = {v: {q: runs[v][q]["scores"]["answer_accuracy"]["value"] for q in ans} for v in runs}
     paired = [q for q in ans if acc["v1"][q] is not None and acc["v2"][q] is not None]
@@ -161,6 +169,20 @@ def analyze(d: dict) -> dict:
         p5[v] = {"refusals": len(refs), "nan": st.count("nan"), "scored": len(vals),
                  "mean_when_scored": round(statistics.mean(vals), 3) if vals else None}
     out["P5"] = p5
+
+    # context recall: validated against deterministic retrieval signals, and repeatability
+    # (v1 and v2 share question, passages and reference, so their scores should be identical)
+    cr = {v: {q: runs[v][q]["scores"]["context_recall"]["value"] for q in ans} for v in runs}
+    def cr_table(signal):
+        return {f"signal_{a}_judge_{b_}": sum(1 for q in ans if cr["v1"][q] is not None and signal(q) == a
+                                              and (cr["v1"][q] >= JUDGE_CORRECT_AT) == b_)
+                for a in (True, False) for b_ in (True, False)}
+    out["context_recall_check"] = {
+        "vs_gold_passage_retrieved": cr_table(lambda q: gold_ret[q]),
+        "vs_gold_passage_or_answer_text_retrieved": cr_table(lambda q: gold_ret[q] or in_ctx[q]),
+        "repeatable_v1_v2": sum(cr["v1"][q] == cr["v2"][q] for q in ans),
+        "identical_inputs_v1_v2": sum(runs["v1"][q]["retrieved"] == runs["v2"][q]["retrieved"] for q in ans),
+        "n": len(ans)}
 
     # string match vs judge on real answers (answerable, both prompts)
     rows = [(v, q) for v in runs for q in ans if runs[v][q]["scores"]["answer_accuracy"]["value"] is not None]
@@ -259,6 +281,10 @@ def report(a: dict) -> str:
         f"| P5 | Faithfulness on refusals | ≥50% of v2 refusals blank (NaN) | {P5['v1']['nan']}/{P5['v1']['refusals']} NaN | "
         f"{P5['v2']['nan']}/{P5['v2']['refusals']} NaN | {verdict('P5', p5_ok)} | yes |",
         "",
+        f"P3 with an alternative definition added after results (gold answer text in none of the retrieved passages, "
+        f"n={a['P3_alt_answer_text_absent']['v1']['n']}): v1 {a['P3_alt_answer_text_absent']['v1']['pct']}%, "
+        f"v2 {a['P3_alt_answer_text_absent']['v2']['pct']}%. The pre-registered row above is unchanged.",
+        "",
         f"P4 by retrieval: gold passage retrieved {a['P4_by_retrieval']['gold_retrieved']['diff']:+.3f} "
         f"(n={a['P4_by_retrieval']['gold_retrieved']['n']}); not retrieved {a['P4_by_retrieval']['gold_not_retrieved']['diff']:+.3f} "
         f"(n={a['P4_by_retrieval']['gold_not_retrieved']['n']}).",
@@ -284,6 +310,14 @@ def report(a: dict) -> str:
         "|---|---|---|",
         f"| string match: yes | {s['table']['sm_True_judge_True']} | {s['table']['sm_True_judge_False']} |",
         f"| string match: no | {s['table']['sm_False_judge_True']} | {s['table']['sm_False_judge_False']} |",
+        "",
+        "## Context recall check (no extra judge calls)",
+        "",
+        f"- Repeatability: {a['context_recall_check']['repeatable_v1_v2']}/{a['context_recall_check']['n']} identical scores "
+        f"across v1 and v2 ({a['context_recall_check']['identical_inputs_v1_v2']}/{a['context_recall_check']['n']} had identical inputs).",
+        f"- Judge (≥ {JUDGE_CORRECT_AT}) vs gold passage retrieved: {a['context_recall_check']['vs_gold_passage_retrieved']}.",
+        f"- Judge vs gold passage *or* gold answer text retrieved: {a['context_recall_check']['vs_gold_passage_or_answer_text_retrieved']}. "
+        "Labels mark one passage as correct, so the answer often sits in another retrieved passage.",
         "",
         "## Failure labels (judge correctness; retrieval = gold passage retrieved)",
         "",
