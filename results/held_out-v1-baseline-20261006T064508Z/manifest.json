@@ -1,0 +1,47 @@
+{
+ "run_id": "held_out-v1-baseline-20261006T064508Z",
+ "started_utc": "2026-10-06T06:45:08.104813+00:00",
+ "finished_utc": "2026-10-06T06:48:34.387476+00:00",
+ "git": {
+  "commit": "ef1b374",
+  "dirty": false
+ },
+ "split": "held_out",
+ "n_questions": 150,
+ "limit": null,
+ "dataset_sha256": "2e9557a6ea4bfd65f381c64b91122c90554e4b00f86e15a8b4f1353be1c81510",
+ "samples_sha256": "bcbd7a13565b5396eddce97fd8be63b0488a33171b2190543c3cc8217d0e1169",
+ "retrieval": {
+  "method": "bm25s",
+  "top_k": 5,
+  "fields": "title + passage text",
+  "corpus_passages": 46185
+ },
+ "generator": {
+  "requested_model": "gpt-6-luna",
+  "returned_models": [
+   "gpt-6-luna"
+  ],
+  "sent_settings": [
+   "{\"max_completion_tokens\": 200, \"model\": \"gpt-6-luna\", \"reasoning_effort\": \"none\", \"temperature\": 0}"
+  ],
+  "prompt_version": "v1-baseline",
+  "prompt_sha256": "791430f43f793ba8",
+  "system_prompt": "You answer questions using the provided context passages.",
+  "prices_per_1m": {
+   "input": 0.1,
+   "output": 0.5
+  }
+ },
+ "totals": {
+  "prompt_tokens": 97470,
+  "completion_tokens": 3576,
+  "cost_usd": 0.011535
+ },
+ "versions": {
+  "openai": "3.3.0",
+  "bm25s": "0.3.12",
+  "ragas": "0.4.3",
+  "langchain-community": "0.4.1"
+ }
+}

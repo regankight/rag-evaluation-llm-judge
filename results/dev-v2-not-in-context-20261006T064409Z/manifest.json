@@ -1,0 +1,47 @@
+{
+ "run_id": "dev-v2-not-in-context-20261006T064409Z",
+ "started_utc": "2026-10-06T06:44:09.182257+00:00",
+ "finished_utc": "2026-10-06T06:44:49.535608+00:00",
+ "git": {
+  "commit": "f201eeb",
+  "dirty": true
+ },
+ "split": "dev",
+ "n_questions": 30,
+ "limit": null,
+ "dataset_sha256": "2e9557a6ea4bfd65f381c64b91122c90554e4b00f86e15a8b4f1353be1c81510",
+ "samples_sha256": "bcbd7a13565b5396eddce97fd8be63b0488a33171b2190543c3cc8217d0e1169",
+ "retrieval": {
+  "method": "bm25s",
+  "top_k": 5,
+  "fields": "title + passage text",
+  "corpus_passages": 46185
+ },
+ "generator": {
+  "requested_model": "gpt-6-luna",
+  "returned_models": [
+   "gpt-6-luna"
+  ],
+  "sent_settings": [
+   "{\"max_completion_tokens\": 200, \"model\": \"gpt-6-luna\", \"reasoning_effort\": \"none\", \"temperature\": 0}"
+  ],
+  "prompt_version": "v2-not-in-context",
+  "prompt_sha256": "b546f83635af54a7",
+  "system_prompt": "Answer using only the provided context passages. If the passages do not contain the answer, reply with exactly NOT_IN_CONTEXT and nothing else. Do not explain what the passages are missing.",
+  "prices_per_1m": {
+   "input": 0.1,
+   "output": 0.5
+  }
+ },
+ "totals": {
+  "prompt_tokens": 18378,
+  "completion_tokens": 360,
+  "cost_usd": 0.002018
+ },
+ "versions": {
+  "openai": "3.3.0",
+  "bm25s": "0.3.12",
+  "ragas": "0.4.3",
+  "langchain-community": "0.4.1"
+ }
+}

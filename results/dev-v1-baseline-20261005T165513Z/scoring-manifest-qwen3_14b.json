@@ -1,0 +1,26 @@
+{
+ "answers_run": "dev-v1-baseline-20261005T165513Z",
+ "scored": 4,
+ "of": 30,
+ "judge_model": "qwen3:14b",
+ "judge_settings_requested": {
+  "temperature": 0,
+  "reasoning_effort": "none"
+ },
+ "judge_settings_sent_this_session": [
+  "{\"max_tokens\": 1024, \"model\": \"qwen3:14b\", \"reasoning_effort\": \"none\", \"temperature\": 0, \"top_p\": 0.1}"
+ ],
+ "factual_correctness_mode": "recall",
+ "status_counts": {
+  "context_recall:not_applicable": 1,
+  "context_recall:ok": 3,
+  "factual_correctness:not_applicable": 1,
+  "factual_correctness:ok": 3,
+  "faithfulness:ok": 4
+ },
+ "versions": {
+  "ragas": "0.4.3",
+  "langchain-community": "0.4.1",
+  "openai": "3.3.0"
+ }
+}
