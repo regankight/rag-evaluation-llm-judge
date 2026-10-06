@@ -1,5 +1,8 @@
 # Everything offline uses committed artifacts; no API key, judge or network needed except `data`.
-.PHONY: test lint data reproduce review
+.PHONY: test lint data reproduce gate-demo
+
+V1 := results/held_out-v1-baseline-20261006T064508Z
+V2 := results/held_out-v2-not-in-context-20261006T064838Z
 
 test:  ## unit + integration tests (offline)
 	uv run pytest -q
@@ -10,7 +13,11 @@ lint:  ## lint and formatting check
 data:  ## download the TyDi QA dev file (~232 MB) and verify its checksum
 	uv run python download_data.py
 
-reproduce: test lint  ## regenerate reports/analysis.* from the committed run artifacts
+gate-demo:  ## the regression gate on the committed runs: adopting v2 passes, reverting to v1 fails
+	uv run python eval_gate.py $(V1) $(V2)
+	! uv run python eval_gate.py $(V2) $(V1) > /dev/null && echo "reverting the prompt is blocked, as expected"
+
+reproduce: test lint gate-demo  ## regenerate reports/analysis.* from the committed run artifacts
 	uv run python analyze.py > /dev/null
 	git diff --exit-code reports/ && echo "reports/ regenerated identically"
 
