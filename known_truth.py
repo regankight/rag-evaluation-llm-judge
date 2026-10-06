@@ -89,36 +89,48 @@ def cmd_build() -> None:
     print(f"{len(cases)} cases from {len(cases) // len(VARIANTS)} questions -> {CASES}")
 
 
-async def cmd_score(max_minutes: float) -> None:
-    import httpx
+# USD per 1M tokens for API judges (OpenAI pricing page, checked 2026-10-05; decision 0004).
+API_JUDGE_PRICES = {"gpt-6-luna": {"input": 0.10, "output": 0.50}}
+
+
+async def cmd_score(max_minutes: float, judge: str | None, provider: str, concurrency: int) -> None:
     from dotenv import load_dotenv
     from openai import AsyncOpenAI
     from ragas.llms import llm_factory
     from ragas.metrics.collections import AnswerAccuracy
 
+    from judge_clients import Recorder, http_client
     from score_run import JUDGE_SETTINGS, count_truncations, read_log, run_metric
 
     load_dotenv(".env")
-    judge = os.environ["JUDGE_MODEL"]
-    client = AsyncOpenAI(
-        base_url=os.environ["OLLAMA_BASE_URL"], api_key="ollama", http_client=httpx.AsyncClient(timeout=600)
-    )
+    judge = judge or os.environ["JUDGE_MODEL"]
+    rec = Recorder()
+    if provider == "ollama":
+        client = AsyncOpenAI(
+            base_url=os.environ["OLLAMA_BASE_URL"], api_key="ollama", http_client=http_client(None, rec)
+        )
+    else:
+        # Pin at the HTTP layer: RAGAS rewrites temperature to 1.0 for models named gpt-5+ (decision 0010).
+        client = AsyncOpenAI(http_client=http_client(dict(JUDGE_SETTINGS), rec))
     metric = AnswerAccuracy(llm=llm_factory(judge, client=client, **JUDGE_SETTINGS))
     out = Path(str(SCORES).format(judge=judge.replace(":", "_")))
     done = {r["case_id"] for r in load_jsonl(out)}
     todo = [c for c in load_jsonl(CASES) if c["case_id"] not in done]
-    before, deadline = count_truncations(read_log()), time.monotonic() + max_minutes * 60
-    print(f"{len(done)} scored, {len(todo)} to go")
-    for i, c in enumerate(todo, 1):
-        if time.monotonic() > deadline:
-            print(f"time budget reached; rerun to continue ({len(todo) - i + 1} left)")
-            break
-        r = await run_metric(
-            metric.ascore,
-            user_input=c["question"],
-            response=c["response"],
-            reference=reference_answer(c["gold_answers"]),
-        )
+    before, started = count_truncations(read_log()), time.monotonic()
+    deadline = started + max_minutes * 60
+    print(f"{judge} ({provider}): {len(done)} scored, {len(todo)} to go")
+    sem = asyncio.Semaphore(concurrency)
+
+    async def score(c: dict) -> dict | None:
+        async with sem:
+            if time.monotonic() > deadline:
+                return None
+            r = await run_metric(
+                metric.ascore,
+                user_input=c["question"],
+                response=c["response"],
+                reference=reference_answer(c["gold_answers"]),
+            )
         row = {
             "case_id": c["case_id"],
             "variant": c["variant"],
@@ -126,10 +138,38 @@ async def cmd_score(max_minutes: float) -> None:
             "string_match": string_match(c["response"], c["gold_answers"]),
             "answer_accuracy": r,
         }
-        with open(out, "a") as f:
+        with open(out, "a") as f:  # appended as each finishes: resumable
             f.write(json.dumps(row) + "\n")
-    truncated = count_truncations(read_log()) - before
-    print(f"truncations this session: {truncated}" + ("  <- scores INVALID" if truncated else ""))
+        return row
+
+    results = await asyncio.gather(*(score(c) for c in todo))
+    left = sum(r is None for r in results)
+    if left:
+        print(f"time budget reached; rerun to continue ({left} left)")
+    truncated = count_truncations(read_log()) - before if provider == "ollama" else 0
+    tokens = rec.tokens()
+    price = API_JUDGE_PRICES.get(judge)
+    manifest_path = out.with_name(f"scoring-manifest-{judge.replace(':', '_')}.json")
+    previous = json.loads(manifest_path.read_text()) if manifest_path.exists() else {"sessions": []}
+    previous["sessions"].append(
+        {
+            "judge": judge,
+            "provider": provider,
+            "concurrency": concurrency,
+            "scored": sum(r is not None for r in results),
+            "wall_seconds": round(time.monotonic() - started, 1),
+            "settings_sent": rec.settings_sent(),
+            "tokens": tokens,
+            "cost_usd": round(
+                (tokens["prompt_tokens"] * price["input"] + tokens["completion_tokens"] * price["output"]) / 1e6, 6
+            )
+            if price
+            else 0.0,
+            "ollama_truncations": truncated,
+        }
+    )
+    manifest_path.write_text(json.dumps(previous, indent=1) + "\n")
+    print(json.dumps(previous["sessions"][-1], indent=1))
 
 
 def summarize(rows: list[dict]) -> dict:
@@ -150,8 +190,9 @@ def summarize(rows: list[dict]) -> dict:
     return dict(out)
 
 
-def cmd_report() -> None:
-    judge = os.environ.get("JUDGE_MODEL", JUDGE)
+def cmd_report(judge: str | None = None) -> None:
+    judge = judge or os.environ.get("JUDGE_MODEL", JUDGE)
+    print(f"judge: {judge}")
     rows = load_jsonl(Path(str(SCORES).format(judge=judge.replace(":", "_"))))
     print(f"{'variant':15} {'truth':8} {'n':>3} {'string match':>13} {'judge':>8} {'failed':>7}  judge values")
     for name, (_, correct) in VARIANTS.items():
@@ -169,10 +210,13 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("command", choices=["build", "score", "report"])
     ap.add_argument("--max-minutes", type=float, default=8.0)
+    ap.add_argument("--judge", help="judge model (default: JUDGE_MODEL from .env)")
+    ap.add_argument("--provider", choices=["ollama", "openai"], default="ollama")
+    ap.add_argument("--concurrency", type=int, default=1, help="parallel judge calls (API judges only)")
     a = ap.parse_args()
     if a.command == "build":
         cmd_build()
     elif a.command == "score":
-        asyncio.run(cmd_score(a.max_minutes))
+        asyncio.run(cmd_score(a.max_minutes, a.judge, a.provider, a.concurrency))
     else:
-        cmd_report()
+        cmd_report(a.judge)

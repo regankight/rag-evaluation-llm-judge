@@ -1,0 +1,29 @@
+# 0010: API judge vs local judge, on known-truth cases only
+
+**Status:** Accepted, 2026-10-06. Setup and expectations written **before** the API judge was run on the 360 cases.
+
+## The question
+
+The client question this answers: *can a free local model be the judge, or do we need an API model?* We know the local judge (`qwen3-14b-8k`) scores 358/360 on known-truth cases (record 0008). The same cases scored by `gpt-6-luna` give a direct comparison of accuracy, cost and speed.
+
+## Why only the known-truth cases
+
+The known-truth responses are **templates** ("The answer is {gold}."), not written by any model, so an OpenAI judge has nothing of its own to favor. The real held-out answers were written by `gpt-6-luna`; scoring them with `gpt-6-luna` would mix judge quality with self-preference bias (decision D4). That's why they're excluded.
+
+## Found while setting it up: RAGAS overrides temperature by model name
+
+A one-call smoke test with the request captured showed RAGAS 0.4.3 sending **`temperature: 1.0`** although `temperature=0` was requested. In `ragas/llms/base.py`, any model whose name matches `gpt-5` … `gpt-19` (or `o1`–`o9`) is treated as a reasoning model: temperature is forced to 1.0 and `top_p` is dropped. That assumption is outdated for GPT-6, which accepts `temperature=0` when `reasoning_effort="none"` (verified in Phase 0, record 0004).
+
+**Fix:** `judge_clients.py` pins `temperature` and `reasoning_effort` in the HTTP transport, the last step before the request leaves, and records the body as sent. Tested with a fake server, then verified on a real call (sent: `temperature: 0`, `reasoning_effort: "none"`; accepted).
+
+This is the third instance of one bug class in this project's history: a setting silently not applied (Ollama ignoring `temperature` in the take-home; Ollama truncating prompts, record 0005; RAGAS rewriting temperature, here). The defense is always the same: record what was actually sent.
+
+## Setup
+
+Same AnswerAccuracy metric, same 360 cases, same ≥ 0.5 threshold. `gpt-6-luna`, `temperature 0`, `reasoning_effort "none"`, 8 concurrent requests. Cost computed from returned token counts at $0.10 / $0.50 per 1M input/output tokens.
+
+## Expectations (written before running)
+
+- Accuracy: both judges at 355+/360. The 3 bad-gold questions (record 0008) should trouble both, since the problem is in the answer key, not the judge.
+- Cost: API under $0.10 for all 360; local $0 but ~30 min of machine time. API wall time: a few minutes.
+- If the API judge clearly beats the local judge, the README recommends it for clients despite the cost; if they tie, the local judge wins on cost and data privacy.
