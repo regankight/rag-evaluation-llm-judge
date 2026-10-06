@@ -38,3 +38,30 @@ Test the scorers on **answers whose correct label is guaranteed by construction*
 
 - **Does:** exactly where each scorer fails on known inputs, repeatably and with no reviewer.
 - **Doesn't:** how often those failure modes occur in *real* model answers. Constructed cases are cleaner than real ones. That side is covered by the held-out disagreement analysis (string match vs judge on real answers, with examples) and the 150 human refusal labels.
+
+## Results (added after scoring, 2026-10-06)
+
+360 cases, 0 failed judge calls, 0 prompt truncations.
+
+| Variant | Truth | String match right | Judge right (≥ 0.5) | Judge values |
+|---|---|---|---|---|
+| exact | correct | 60/60 | 59/60 | 1.0 ×55, 0.75 ×3, 0.5 ×1, 0.25 ×1 |
+| sentence | correct | 60/60 | 60/60 | 1.0 ×57, 0.5 ×3 |
+| reworded | correct | 60/60 | 59/60 | 1.0 ×48, 0.75 ×10, 0.5 ×1, 0.25 ×1 |
+| swapped | wrong | 60/60 | 60/60 | 0.0 ×60 |
+| negation_trap | wrong | **0/60** | **60/60** | 0.0 ×60 |
+| refusal | wrong | 60/60 | 60/60 | 0.0 ×60 |
+| **Total** | | **300/360** | **358/360** | |
+
+**As expected:** string matching fails every negation trap. "It is not X; the answer is Y" contains the gold words.
+
+**Not expected:** the judge caught all 60 traps (0.0 every time).
+
+**The judge's 2 "misses" are answer-key errors, not judge errors.** Every correct-by-construction case scored below 0.75 traces to 3 questions with a bad or contradictory gold list:
+- *"Where did the Meiji Restoration take place?"* The first gold answer is "1868" (a year for a where-question). The judge scoring it low is right.
+- *"Who lost the Battle of Chancellorsville?"* The gold list accepts both armies, the loser and the winner.
+- *"When do children start to retain memories?"* The gold answers conflict ("three or four" vs "age of one").
+
+So **known-truth construction inherits the answer key's errors**: "correct by construction" is only as correct as the gold answer it's built from. Same lesson as the Phase 0 spike, found a second, independent way.
+
+**Wording sensitivity:** the same correct answer scored 1.0 in 55/60 cases as a bare answer but in only 48/60 when prefixed with "Based on the passages, it is…" (10 dropped to 0.75). The prefix doesn't change the meaning, but it does move the score. Averages of judge scores should be compared only between answers in a similar style.
