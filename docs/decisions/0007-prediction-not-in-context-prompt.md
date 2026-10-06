@@ -69,3 +69,5 @@ Scored on held-out (100 answerable + 50 unanswerable, paired). v1 refusals from 
 | P5 faithfulness on refusals | **Yes** | Yes | v2 refusals: 69/71 blank (NaN); v1 free-text refusals: 0/31 blank, all scored as faithful |
 
 **Honest summary:** every predicted *direction* held except P4's, which can't be established at n = 100. The *sizes* were mostly wrong: the baseline grounded itself much less than the 30-question dev hint suggested, a reminder of how little a small dev set says about rates. The borderline "refuses, then adds a related fact" group (10 answers; the human labeled 9 as answered) moves v1's made-up rate between 48% and 60%; the conclusion holds either way.
+
+**Correction (2026-10-06, record 0012):** the P4 split above used gold-passage retrieval, which undercounts retrieval. With "gold passage or gold answer text retrieved", the accuracy change is −0.004 where retrieval succeeded (n=59) and −0.110 where it missed (n=41). The conclusion is unchanged.

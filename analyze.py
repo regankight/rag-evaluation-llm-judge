@@ -15,7 +15,10 @@ import statistics
 from math import comb
 from pathlib import Path
 
+from generation import SETTINGS as GENERATION_SETTINGS
+from known_truth import overlap_suspect
 from runs import HELD_OUT, JUDGE, JUDGE_CORRECT_AT, scores_file
+from score_run import deterministic_scores
 from scorers import ANSWERED, REFUSED, classify_response
 
 API_JUDGE = "gpt-6-luna"  # second judge, known-truth cases only (decision 0010)
@@ -41,15 +44,15 @@ def paired_bootstrap_ci(diffs: list[float], seed: int = SEED, b: int = B) -> tup
     rng = random.Random(seed)
     n = len(diffs)
     means = sorted(sum(rng.choice(diffs) for _ in range(n)) / n for _ in range(b))
-    return sum(diffs) / n, means[int(0.025 * b)], means[int(0.975 * b) - 1]
+    k = int(0.025 * b)  # same number of resamples excluded below and above, for any b
+    return sum(diffs) / n, means[k], means[b - 1 - k]
 
 
-def ci_halfwidth_at(values: list[float], n: int, seed: int = SEED, b: int = 2_000) -> float:
-    """Half-width of the bootstrap 95% CI of the mean if only n questions had been scored."""
-    rng = random.Random(seed)
-    sub = rng.sample(values, n)
-    _, lo, hi = paired_bootstrap_ci(sub, seed=seed, b=b)
-    return (hi - lo) / 2
+def ci_halfwidth_at(values: list[float], n: int) -> float:
+    """Expected half-width of a 95% CI for the mean if n questions were scored, using the spread
+    of all scores: 1.96 * sd / sqrt(n). Deterministic, unlike a single random subsample of size n,
+    whose interval depends on which questions happened to be drawn (code review, finding 5)."""
+    return 1.96 * statistics.stdev(values) / n**0.5
 
 
 def wilson_ci(k: int, n: int, z: float = 1.96) -> tuple[float, float]:
@@ -83,7 +86,9 @@ def load() -> dict:
     for v, d in RUNS.items():
         answers = {r["qid"]: r for r in load_jsonl(Path(d, "answers.jsonl"))}
         scores = {r["qid"]: r for r in load_jsonl(Path(d, scores_file()))}
-        data[v] = {q: {**answers[q], "scores": scores[q]} for q in answers}
+        # String match, answer-in-context and refusal are code, not judge output: recomputed from
+        # the answers with the current scorers rather than read from stored values (finding 4).
+        data[v] = {q: {**answers[q], "scores": {**scores[q], **deterministic_scores(answers[q])}} for q in answers}
     sample = json.loads(Path("review/sample.json").read_text())
     labels = json.loads(Path("review/review-results.json").read_text())["part_a"]
     human_v1 = {x["qid"]: labels[x["id"]] for x in sample["part_a"] if x["id"] in labels}
@@ -93,6 +98,7 @@ def load() -> dict:
         "runs": data,
         "human_v1": human_v1,
         "known_truth": load_jsonl(Path("known_truth", scores_file())),
+        "known_truth_cases": load_jsonl(Path("known_truth/cases.jsonl")),
         "known_truth_api": load_jsonl(api) if api.exists() else [],
         "known_truth_api_manifest": json.loads(api_manifest.read_text()) if api_manifest.exists() else None,
     }
@@ -190,14 +196,30 @@ def analyze(d: dict) -> dict:
         "n_paired": len(paired),
         "missing": len(ans) - len(paired),
     }
-    # where the accuracy change comes from: retrieval hit vs miss
-    out["P4_by_retrieval"] = {
-        k: {"n": len(qs), "diff": round(statistics.mean(acc["v2"][q] - acc["v1"][q] for q in qs), 4)}
-        for k, qs in (
+    # where the accuracy change comes from. "Retrieval succeeded" = gold passage retrieved OR the
+    # gold answer text in any retrieved passage: gold labels mark one passage, so the gold-passage
+    # signal alone undercounts retrieval (finding 8). The gold-passage split is kept for reference.
+    in_ctx_all = {q: bool(runs["v1"][q]["scores"]["answer_in_context"]) for q in ans}
+    retrieval_ok = {q: gold_ret[q] or in_ctx_all[q] for q in ans}
+
+    def split_diff(groups):
+        return {
+            k: {"n": len(qs), "diff": round(statistics.mean(acc["v2"][q] - acc["v1"][q] for q in qs), 4)}
+            for k, qs in groups
+        }
+
+    out["P4_by_retrieval"] = split_diff(
+        (
+            ("retrieval_succeeded", [q for q in paired if retrieval_ok[q]]),
+            ("retrieval_missed", [q for q in paired if not retrieval_ok[q]]),
+        )
+    )
+    out["P4_by_gold_passage"] = split_diff(
+        (
             ("gold_retrieved", [q for q in ret if q in paired]),
             ("gold_not_retrieved", [q for q in miss if q in paired]),
         )
-    }
+    )
 
     # P5 faithfulness on refusals
     def faith(v, q):
@@ -273,12 +295,12 @@ def analyze(d: dict) -> dict:
         "examples_string_yes_judge_no": ex(True, False),
     }
 
-    # failure labels (judge-based correctness; retrieval = gold passage retrieved)
+    # failure labels (judge-based correctness; retrieval = gold passage or answer text retrieved)
     fl = {}
     for v in runs:
         counts = {
             "correct": 0,
-            "correct_without_gold_passage": 0,
+            "correct_without_answer_in_context": 0,
             "generation_error": 0,
             "retrieval_miss": 0,
             "refused": 0,
@@ -289,9 +311,9 @@ def analyze(d: dict) -> dict:
                 continue
             ok = acc[v][q] is not None and acc[v][q] >= JUDGE_CORRECT_AT
             key = (
-                ("correct" if gold_ret[q] else "correct_without_gold_passage")
+                ("correct" if retrieval_ok[q] else "correct_without_answer_in_context")
                 if ok
-                else ("generation_error" if gold_ret[q] else "retrieval_miss")
+                else ("generation_error" if retrieval_ok[q] else "retrieval_miss")
             )
             counts[key] += 1
         fl[v] = counts
@@ -314,6 +336,16 @@ def analyze(d: dict) -> dict:
         "judge_median_seconds": secs,
         "judge_minutes_per_100_answerable_all_metrics": round(sum(secs.values()) * 100 / 60, 1),
         "string_match": "microseconds, $0",
+    }
+    # cut-off answers: runs made before finish_reason was recorded are checked via token counts
+    cap = GENERATION_SETTINGS["max_completion_tokens"]
+    out["answer_length_check"] = {
+        v: {
+            "max_completion_tokens_used": max(runs[v][q]["completion_tokens"] for q in qids),
+            "cap": cap,
+            "finish_reason_length": sum(runs[v][q].get("finish_reason") == "length" for q in qids),
+        }
+        for v in runs
     }
 
     # threshold sensitivity: does the 0.5 choice drive any conclusion?
@@ -351,8 +383,20 @@ def analyze(d: dict) -> dict:
         "rate_ci95": [round(x, 3) for x in wilson_ci(3, len(by_q))],
     }
 
-    # known-truth summary
+    # known-truth summary; cases whose "wrong" answer shares a year/decade with the gold are
+    # flagged (e.g. "1980s" vs "June 1989") and results are also reported without them (finding 7)
     kt = d["known_truth"]
+    cases = {c["case_id"]: c for c in d["known_truth_cases"]}
+
+    def suspect(r):
+        c = cases[r["case_id"]]
+        if c["is_correct"] or c["variant"] == "refusal":
+            return False
+        other = c["response"].split("the answer is ")[-1] if "the answer is " in c["response"] else c["response"]
+        return overlap_suspect(c["gold_answers"][0], other)
+
+    flagged_cases = sorted(r["case_id"] for r in kt if suspect(r))
+    out["known_truth_flagged"] = flagged_cases
     out["known_truth"] = {
         "n": len(kt),
         "string_match_right": sum(r["string_match"] == r["is_correct"] for r in kt),
@@ -360,6 +404,13 @@ def analyze(d: dict) -> dict:
             r["answer_accuracy"]["value"] is not None
             and (r["answer_accuracy"]["value"] >= JUDGE_CORRECT_AT) == r["is_correct"]
             for r in kt
+        ),
+        "n_clean": sum(not suspect(r) for r in kt),
+        "judge_right_clean": sum(
+            r["answer_accuracy"]["value"] is not None
+            and (r["answer_accuracy"]["value"] >= JUDGE_CORRECT_AT) == r["is_correct"]
+            for r in kt
+            if not suspect(r)
         ),
     }
 
@@ -377,6 +428,7 @@ def analyze(d: dict) -> dict:
             "local": {
                 "judge": JUDGE,
                 "right": sum(right(r) for r in kt),
+                "right_clean": sum(right(r) for r in kt if not suspect(r)),
                 "n": len(kt),
                 "cost_usd": 0.0,
                 "minutes_sequential": round(sum(r["answer_accuracy"]["seconds"] for r in kt) / 60, 1),
@@ -384,6 +436,7 @@ def analyze(d: dict) -> dict:
             "api": {
                 "judge": API_JUDGE,
                 "right": sum(right(r) for r in api),
+                "right_clean": sum(right(r) for r in api if not suspect(r)),
                 "n": len(api),
                 "cost_usd": round(sum(x["cost_usd"] for x in session), 4),
                 "minutes_wall": round(sum(x["wall_seconds"] for x in session) / 60, 1),
@@ -453,9 +506,12 @@ def report(a: dict) -> str:
         f"n={a['P3_alt_answer_text_absent']['v1']['n']}): v1 {a['P3_alt_answer_text_absent']['v1']['pct']}%, "
         f"v2 {a['P3_alt_answer_text_absent']['v2']['pct']}%. The pre-registered row above is unchanged.",
         "",
-        f"P4 by retrieval: gold passage retrieved {a['P4_by_retrieval']['gold_retrieved']['diff']:+.3f} "
-        f"(n={a['P4_by_retrieval']['gold_retrieved']['n']}); not retrieved {a['P4_by_retrieval']['gold_not_retrieved']['diff']:+.3f} "
-        f"(n={a['P4_by_retrieval']['gold_not_retrieved']['n']}).",
+        f"P4 by retrieval (succeeded = gold passage or gold answer text retrieved): succeeded "
+        f"{a['P4_by_retrieval']['retrieval_succeeded']['diff']:+.3f} (n={a['P4_by_retrieval']['retrieval_succeeded']['n']}); "
+        f"missed {a['P4_by_retrieval']['retrieval_missed']['diff']:+.3f} (n={a['P4_by_retrieval']['retrieval_missed']['n']}). "
+        f"By gold passage only: retrieved {a['P4_by_gold_passage']['gold_retrieved']['diff']:+.3f} "
+        f"(n={a['P4_by_gold_passage']['gold_retrieved']['n']}), not retrieved "
+        f"{a['P4_by_gold_passage']['gold_not_retrieved']['diff']:+.3f} (n={a['P4_by_gold_passage']['gold_not_retrieved']['n']}).",
         "",
         '## Borderline refusals ("refuses, then adds a related fact")',
         "",
@@ -470,7 +526,9 @@ def report(a: dict) -> str:
         "",
         "## String matching vs the judge",
         "",
-        f"**Known-truth cases** (decision 0008): string matching {kt['string_match_right']}/{kt['n']}, judge {kt['judge_right']}/{kt['n']}.",
+        f"**Known-truth cases** (decision 0008): string matching {kt['string_match_right']}/{kt['n']}, judge {kt['judge_right']}/{kt['n']}; "
+        f'excluding {kt["n"] - kt["n_clean"]} flagged cases whose "wrong" answer shares a year/decade with the gold '
+        f"({', '.join(a['known_truth_flagged'])}): judge {kt['judge_right_clean']}/{kt['n_clean']}.",
         "",
         f"**Real answers** ({s['n']} answerable, both prompts): agree on {s['agree']}/{s['n']}.",
         "",
@@ -491,12 +549,14 @@ def report(a: dict) -> str:
             [
                 "## Local judge vs API judge (known-truth cases only, decision 0010)",
                 "",
-                '| | Right | Cost | Time | "Based on the passages…" answers scored 1.0 |',
-                "|---|---|---|---|---|",
+                '| | Right | Right, flagged cases excluded | Cost | Time | "Based on the passages…" answers scored 1.0 |',
+                "|---|---|---|---|---|---|",
                 f"| {a['judge_comparison']['local']['judge']} (local) | {a['judge_comparison']['local']['right']}/{a['judge_comparison']['local']['n']} | "
+                f"{a['judge_comparison']['local']['right_clean']}/{kt['n_clean']} | "
                 f"$0 | ~{a['judge_comparison']['local']['minutes_sequential']} min (one at a time) | "
                 f"{a['judge_comparison']['reworded_scored_1']['local']}/60 |",
                 f"| {a['judge_comparison']['api']['judge']} (API) | {a['judge_comparison']['api']['right']}/{a['judge_comparison']['api']['n']} | "
+                f"{a['judge_comparison']['api']['right_clean']}/{kt['n_clean']} | "
                 f"${a['judge_comparison']['api']['cost_usd']} | {a['judge_comparison']['api']['minutes_wall']} min "
                 f"({a['judge_comparison']['api']['concurrency']} parallel) | {a['judge_comparison']['reworded_scored_1']['api']}/60 |",
                 "",
@@ -524,7 +584,7 @@ def report(a: dict) -> str:
         f"or contradictory gold answer (decision 0008): {3 / a['answer_key_noise']['questions']:.0%} of answer keys, "
         f"95% CI {a['answer_key_noise']['rate_ci95'][0]:.0%}–{a['answer_key_noise']['rate_ci95'][1]:.0%} (small sample).",
         "",
-        "## Failure labels (judge correctness; retrieval = gold passage retrieved)",
+        "## Failure labels (judge correctness; retrieval = gold passage or gold answer text retrieved)",
         "",
         "| | " + " | ".join(a["failure_labels_judge_based"]["v1"]) + " |",
         "|---|" + "---|" * len(a["failure_labels_judge_based"]["v1"]),
@@ -535,9 +595,8 @@ def report(a: dict) -> str:
         "",
         "## How many questions do you need?",
         "",
-        "Half-width of the 95% CI of mean answer accuracy (v1) if only n questions had been scored: "
-        + ", ".join(f"n={n}: ±{w}" for n, w in a["eval_set_size"].items())
-        + ".",
+        "Expected half-width of the 95% CI of mean answer accuracy (v1) with n questions, from the spread of all "
+        "scores (1.96 × sd / √n): " + ", ".join(f"n={n}: ±{w}" for n, w in a["eval_set_size"].items()) + ".",
         "",
         "## Cost and time",
         "",
@@ -546,6 +605,8 @@ def report(a: dict) -> str:
         f"- Local judge, median seconds per call: {a['cost']['judge_median_seconds']}; "
         f"~{a['cost']['judge_minutes_per_100_answerable_all_metrics']} min per 100 answerable answers for all three metrics.",
         f"- String matching: {a['cost']['string_match']}.",
+        f"- No answer was cut off: longest answers used {a['answer_length_check']['v1']['max_completion_tokens_used']} (v1) and "
+        f"{a['answer_length_check']['v2']['max_completion_tokens_used']} (v2) of the {a['answer_length_check']['v1']['cap']}-token cap.",
     ]
     return "\n".join(L) + "\n"
 

@@ -51,6 +51,7 @@ def record(q, hits, g) -> dict:
         "cost_usd": g.cost_usd,
         "latency_s": g.latency_s,
         "sent_settings": g.sent_settings,
+        "finish_reason": g.finish_reason,
     }
 
 
@@ -95,6 +96,9 @@ def main() -> None:
     out.mkdir(parents=True)
 
     rows = answer_questions(chosen, index, gen, out / "answers.jsonl")
+    cut_off = sum(r["finish_reason"] == "length" for r in rows)
+    if cut_off:
+        print(f"WARNING: {cut_off} answers were cut off at max_completion_tokens; they are scored as given")
 
     manifest = {
         "run_id": run_id,
@@ -125,6 +129,7 @@ def main() -> None:
             "prompt_tokens": sum(r["prompt_tokens"] for r in rows),
             "completion_tokens": sum(r["completion_tokens"] for r in rows),
             "cost_usd": round(sum(r["cost_usd"] for r in rows), 6),
+            "answers_cut_off_at_token_limit": cut_off,
         },
         "versions": {p: version(p) for p in ("openai", "bm25s", "ragas", "langchain-community")},
     }

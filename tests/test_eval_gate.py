@@ -83,3 +83,31 @@ def test_judge_errors_unscored_answers_or_truncations_fail():
             cand["truncations"] = 1
         g = evaluate(baseline(), cand)
         assert not g.passed and "measurement is broken" in g.failures[0], breakage
+
+
+def test_blank_accuracy_on_answerable_fails_instead_of_crashing_or_shrinking():
+    for n_blank in (1, 20):  # one blank, and every answerable blank (used to divide by zero)
+        cand = copy.deepcopy(baseline())
+        for i in range(n_blank):
+            cand["rows"][f"a{i}"]["scores"]["answer_accuracy"] = {"value": None, "status": "nan"}
+        g = evaluate(baseline(), cand)
+        assert not g.passed and "without an accuracy score" in g.failures[0], n_blank
+
+
+def test_errors_in_any_metric_fail_including_context_recall():
+    cand = copy.deepcopy(baseline())
+    cand["rows"]["a0"]["scores"]["context_recall"] = {"value": None, "status": "error:TimeoutError:x"}
+    assert not evaluate(baseline(), cand).passed
+
+
+def test_blank_faithfulness_on_refusals_is_expected_not_broken():
+    cand = copy.deepcopy(baseline())
+    cand["rows"]["u0"]["scores"]["faithfulness"] = {"value": None, "status": "nan"}
+    assert evaluate(baseline(), cand).passed
+
+
+def test_truncations_are_summed_across_scoring_sessions():
+    from eval_gate import total_truncations
+
+    assert total_truncations({"sessions": [{"ollama_truncations": 5}, {"ollama_truncations": 0}]}) == 5
+    assert total_truncations({"ollama_truncations_this_session": 2}) == 2  # older single-session format

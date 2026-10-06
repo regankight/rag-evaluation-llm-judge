@@ -20,12 +20,20 @@ REFUSED, ANSWERED = "refused", "answered"
 REFUSAL_MARKER = "NOT_IN_CONTEXT"
 
 
+_DECIMAL = "\x00"  # placeholder that survives punctuation removal (category Cc, not P)
+
+
 def normalize(text: str) -> str:
     """SQuAD-style: lowercase, drop punctuation and English articles, collapse spaces.
     NFKC also unifies variants like full-width digits; dashes become spaces."""
     text = unicodedata.normalize("NFKC", text).lower()
+    # Numbers: drop thousands separators ("1,000" == "1000") but keep decimal points, which
+    # punctuation removal would otherwise merge ("2.3" -> "23" matched a gold "23").
+    text = re.sub(r"(?<=\d),(?=\d{3}\b)", "", text)
+    text = re.sub(r"(?<=\d)\.(?=\d)", _DECIMAL, text)
     text = re.sub(r"[‐-―\-]", " ", text)
     text = "".join(ch for ch in text if ch not in string.punctuation and unicodedata.category(ch)[0] != "P")
+    text = text.replace(_DECIMAL, ".")
     text = re.sub(r"\b(a|an|the)\b", " ", text)
     return " ".join(text.split())
 

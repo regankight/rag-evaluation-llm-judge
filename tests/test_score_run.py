@@ -86,3 +86,15 @@ def test_truncation_warnings_are_counted():
     )
     assert count_truncations(log) == 2
     assert count_truncations("") == 0
+
+
+def test_old_single_session_manifest_is_kept_as_first_session():
+    from score_run import upgrade_manifest
+
+    m = upgrade_manifest(
+        {"scored": 30, "ollama_truncations_this_session": 2, "judge_settings_sent_this_session": ["x"]}
+    )
+    assert m["sessions"][0]["ollama_truncations"] == 2 and m["sessions"][0]["judge_settings_sent"] == ["x"]
+    assert "ollama_truncations_this_session" not in m and m["scored"] == 30
+    assert upgrade_manifest({}) == {"sessions": []}
+    assert upgrade_manifest(m) is m  # already upgraded: unchanged

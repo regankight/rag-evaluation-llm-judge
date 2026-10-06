@@ -19,7 +19,7 @@ from scorers import (
     [
         ("The Eiffel Tower!", "eiffel tower"),
         ("  An   apple, a day ", "apple day"),
-        ("2.3–2.8 mm", "23 28 mm"),  # en dash becomes a space, '.' is punctuation
+        ("2.3–2.8 mm", "2.3 2.8 mm"),  # en dash becomes a space; decimal points survive
         ("１９３９", "1939"),  # full-width digits unified by NFKC
         ("“Quoted”", "quoted"),  # curly quotes are punctuation too
     ],
@@ -123,3 +123,17 @@ def test_v2_marker_classification(text, refusal, method):
 def test_v1_pattern_first_pass(text, refusal):
     r = classify_response(text, "v1-baseline")
     assert r["refusal"] == refusal and r["method"] == "v1_pattern_needs_review"
+
+
+@pytest.mark.parametrize(
+    "response,gold,expected",
+    [
+        ("about 2.3 km", ["23"], False),  # used to match: "2.3" collapsed to "23"
+        ("about 2.3 km", ["2.3"], True),
+        ("It sold 1,000 copies.", ["1000"], True),  # thousands separator still ignored
+        ("It sold 1000 copies.", ["1,000"], True),
+        ("In 1939.", ["1939"], True),  # a sentence-final period is still punctuation
+    ],
+)
+def test_numbers_keep_decimals_and_drop_thousands_separators(response, gold, expected):
+    assert string_match(response, gold) is expected

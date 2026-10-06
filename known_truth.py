@@ -16,6 +16,7 @@ import asyncio
 import json
 import os
 import random
+import re
 import time
 from collections import defaultdict
 from pathlib import Path
@@ -43,6 +44,17 @@ def unrelated(a: str, b: str) -> bool:
     """True if neither normalized answer contains the other, so a swap is truly wrong."""
     na, nb = normalize(a), normalize(b)
     return bool(na and nb) and na not in nb and nb not in na
+
+
+def _decades(text: str) -> set[str]:
+    return {m[:3] for m in re.findall(r"\b(1[0-9]{3}|20[0-9]{2})s?\b", text)}
+
+
+def overlap_suspect(gold: str, other: str) -> bool:
+    """unrelated() checks strings, not meaning: "1980s" vs gold "June 1989" passes it but isn't
+    wrong. Flags year/decade overlap so the analysis can report results without such cases
+    (code review, finding 7). The committed cases were built before this check existed."""
+    return bool(_decades(gold) & _decades(other))
 
 
 def build_cases(questions: list[dict], seed: int = SEED, n: int = N_QUESTIONS) -> list[dict]:

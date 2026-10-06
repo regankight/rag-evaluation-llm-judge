@@ -14,7 +14,7 @@ Held-out: 100 answerable + 50 unanswerable questions, answered by both prompts (
 
 P3 with an alternative definition added after results (gold answer text in none of the retrieved passages, n=41): v1 75.6%, v2 29.3%. The pre-registered row above is unchanged.
 
-P4 by retrieval: gold passage retrieved +0.019 (n=52); not retrieved -0.120 (n=48).
+P4 by retrieval (succeeded = gold passage or gold answer text retrieved): succeeded -0.004 (n=59); missed -0.110 (n=41). By gold passage only: retrieved +0.019 (n=52), not retrieved -0.120 (n=48).
 
 ## Borderline refusals ("refuses, then adds a related fact")
 
@@ -27,7 +27,7 @@ P4 by retrieval: gold passage retrieved +0.019 (n=52); not retrieved -0.120 (n=4
 
 ## String matching vs the judge
 
-**Known-truth cases** (decision 0008): string matching 300/360, judge 358/360.
+**Known-truth cases** (decision 0008): string matching 300/360, judge 358/360; excluding 2 flagged cases whose "wrong" answer shares a year/decade with the gold (e45bbc4b9fb6:negation_trap, e45bbc4b9fb6:swapped): judge 356/358.
 
 **Real answers** (200 answerable, both prompts): agree on 161/200.
 
@@ -44,10 +44,10 @@ P4 by retrieval: gold passage retrieved +0.019 (n=52); not retrieved -0.120 (n=4
 
 ## Local judge vs API judge (known-truth cases only, decision 0010)
 
-| | Right | Cost | Time | "Based on the passages…" answers scored 1.0 |
-|---|---|---|---|---|
-| qwen3-14b-8k (local) | 358/360 | $0 | ~23.1 min (one at a time) | 48/60 |
-| gpt-6-luna (API) | 359/360 | $0.0546 | 5.5 min (8 parallel) | 57/60 |
+| | Right | Right, flagged cases excluded | Cost | Time | "Based on the passages…" answers scored 1.0 |
+|---|---|---|---|---|---|
+| qwen3-14b-8k (local) | 358/360 | 356/358 | $0 | ~23.1 min (one at a time) | 48/60 |
+| gpt-6-luna (API) | 359/360 | 358/358 | $0.0546 | 5.5 min (8 parallel) | 57/60 |
 
 Identical scores on 337/360 cases. Real answers are not scored by the API judge: they were written by the same model family (self-preference).
 
@@ -63,19 +63,20 @@ Identical scores on 337/360 cases. Real answers are not scored by the API judge:
 
 3/60 known-truth questions had a correct-by-construction answer scored below 0.75; inspected by hand, all 3 had a wrong or contradictory gold answer (decision 0008): 5% of answer keys, 95% CI 2%–14% (small sample).
 
-## Failure labels (judge correctness; retrieval = gold passage retrieved)
+## Failure labels (judge correctness; retrieval = gold passage or gold answer text retrieved)
 
-| | correct | correct_without_gold_passage | generation_error | retrieval_miss | refused |
+| | correct | correct_without_answer_in_context | generation_error | retrieval_miss | refused |
 |---|---|---|---|---|---|
-| v1 | 45 | 14 | 7 | 24 | 10 |
-| v2 | 47 | 9 | 3 | 8 | 33 |
+| v1 | 51 | 8 | 8 | 23 | 10 |
+| v2 | 52 | 4 | 3 | 8 | 33 |
 
 ## How many questions do you need?
 
-Half-width of the 95% CI of mean answer accuracy (v1) if only n questions had been scored: n=10: ±0.237, n=25: ±0.175, n=50: ±0.125, n=100: ±0.086.
+Expected half-width of the 95% CI of mean answer accuracy (v1) with n questions, from the spread of all scores (1.96 × sd / √n): n=10: ±0.277, n=25: ±0.175, n=50: ±0.124, n=100: ±0.087.
 
 ## Cost and time
 
 - Generation (gpt-6-luna): $0.0077 (v1) / $0.0074 (v2) per 100 answers.
 - Local judge, median seconds per call: {'faithfulness': 29.9, 'context_recall': 24.7, 'answer_accuracy': 5.3}; ~99.8 min per 100 answerable answers for all three metrics.
 - String matching: microseconds, $0.
+- No answer was cut off: longest answers used 61 (v1) and 52 (v2) of the 200-token cap.

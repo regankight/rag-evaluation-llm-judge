@@ -62,6 +62,7 @@ class Generation:
     cost_usd: float
     latency_s: float
     sent_settings: dict
+    finish_reason: str  # "length" means the answer was cut off at max_completion_tokens
 
 
 class Generator:
@@ -100,4 +101,5 @@ class Generator:
             cost_usd=cost_usd(self.model, u.prompt_tokens, u.completion_tokens),
             latency_s=round(latency, 3),
             sent_settings=dict(self._last_sent),
+            finish_reason=r.choices[0].finish_reason,
         )

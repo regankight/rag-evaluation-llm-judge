@@ -92,3 +92,7 @@ def test_prompt_versions_have_distinct_hashes():
     from generation import PROMPTS, prompt_sha256
 
     assert len({prompt_sha256(v) for v in PROMPTS}) == len(PROMPTS)
+
+
+def test_finish_reason_is_recorded_so_cut_off_answers_are_visible(gen):
+    assert gen.answer("q", [HIT]).finish_reason == "stop"

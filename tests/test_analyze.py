@@ -31,7 +31,21 @@ def test_bootstrap_is_reproducible_and_contains_the_mean():
 
 def test_smaller_samples_give_wider_intervals():
     values = [0, 0.25, 0.5, 0.75, 1] * 20
-    assert ci_halfwidth_at(values, 10, b=1000) > ci_halfwidth_at(values, 100, b=1000)
+    assert ci_halfwidth_at(values, 10) > ci_halfwidth_at(values, 100)
+
+
+def test_ci_halfwidth_hand_checked():
+    import statistics
+
+    values = [0.0, 1.0] * 50  # sd = 0.5025 (n-1 denominator)
+    assert ci_halfwidth_at(values, 25) == pytest.approx(1.96 * statistics.stdev(values) / 5)
+
+
+def test_bootstrap_interval_is_symmetric_in_excluded_resamples():
+    diffs = [0.0, 0.25, -0.5, 1.0, 0.0, 0.0, -0.25, 0.5]
+    for b in (500, 999, 10_000):  # used to drop 13 below but 12 above for b=500
+        _, lo, hi = paired_bootstrap_ci(diffs, seed=3, b=b)
+        assert lo <= hi
 
 
 @pytest.mark.parametrize(
@@ -52,3 +66,11 @@ def test_wilson_hand_checked():
     lo, hi = wilson_ci(3, 60)
     assert lo == pytest.approx(0.0171, abs=1e-3) and hi == pytest.approx(0.1369, abs=1e-3)
     assert wilson_ci(0, 10)[0] == 0.0 and wilson_ci(10, 10)[1] == 1.0
+
+
+def test_overlap_suspect_flags_year_and_decade_overlap():
+    from known_truth import overlap_suspect
+
+    assert overlap_suspect("June 1989", "1980s.")
+    assert not overlap_suspect("June 1989", "House of Lancaster")
+    assert not overlap_suspect("1989", "1795")

@@ -97,6 +97,21 @@ def pending(answers: list[dict], done: list[dict]) -> list[dict]:
     return [a for a in answers if missing_metrics(by_id.get(a["qid"], {}))]
 
 
+def upgrade_manifest(m: dict) -> dict:
+    """Older manifests held only the last session's numbers; keep them as session 1."""
+    if "sessions" in m:
+        return m
+    if not m:
+        return {"sessions": []}
+    old = {
+        "scored_this_session": None,
+        "judge_settings_sent": m.pop("judge_settings_sent_this_session", []),
+        "ollama_truncations": m.pop("ollama_truncations_this_session", 0),
+        "note": "migrated from a single-session manifest; earlier sessions, if any, were not recorded",
+    }
+    return {**m, "sessions": [old]}
+
+
 def write_rows(path: Path, rows: list[dict]) -> None:
     tmp = path.with_suffix(".tmp")
     tmp.write_text("".join(json.dumps(r) + "\n" for r in rows))
@@ -131,6 +146,11 @@ async def main() -> None:
     answers = load_jsonl(args.run_dir / "answers.jsonl")
     out_path = args.run_dir / f"scores-{judge.replace(':', '_')}.jsonl"
     existing = {r["qid"]: r for r in load_jsonl(out_path)}
+    # Deterministic fields are code, not judge output: recompute them for every existing row so a
+    # fixed scorer (e.g. normalize()) never leaves stale values behind (code review, finding 4).
+    for a in answers:
+        if a["qid"] in existing:
+            existing[a["qid"]].update(deterministic_scores(a))
     todo = pending(answers, list(existing.values()))
     truncations_before = count_truncations(read_log())
     deadline = time.monotonic() + args.max_minutes * 60
@@ -184,26 +204,37 @@ async def main() -> None:
             + " ".join(f"{m}={row[m]['value']}" for m in METRICS)
         )
 
+    write_rows(out_path, [existing[x["qid"]] for x in answers if x["qid"] in existing])
     truncated = count_truncations(read_log()) - truncations_before
     if truncated:
         print(f"WARNING: Ollama truncated {truncated} judge prompt(s) this session; scores are INVALID")
     rows = load_jsonl(out_path)
     statuses = Counter(f"{m}:{r[m]['status'].split(':')[0]}" for r in rows for m in METRICS if m in r)
-    manifest = {
-        "answers_run": args.run_dir.name,
-        "scored": len(rows),
-        "of": len(answers),
-        "judge_model": judge,
-        "judge_settings_requested": JUDGE_SETTINGS,
-        "judge_settings_sent_this_session": sorted({json.dumps(s, sort_keys=True) for s in sent}),
-        "metrics": list(METRICS),
-        "ollama_truncations_this_session": truncated,
-        "status_counts": dict(sorted(statuses.items())),
-        "versions": {p: version(p) for p in ("ragas", "langchain-community", "openai")},
-    }
-    (args.run_dir / f"scoring-manifest-{judge.replace(':', '_')}.json").write_text(
-        json.dumps(manifest, indent=1) + "\n"
+    # One entry per scoring session, never overwritten: a truncation in an earlier chunk of a
+    # resumed run must stay visible (code review, finding 2).
+    manifest_path = args.run_dir / f"scoring-manifest-{judge.replace(':', '_')}.json"
+    manifest = upgrade_manifest(json.loads(manifest_path.read_text()) if manifest_path.exists() else {})
+    manifest["sessions"].append(
+        {
+            "scored_this_session": len(todo),
+            "judge_settings_sent": sorted({json.dumps(s, sort_keys=True) for s in sent}),
+            "ollama_truncations": truncated,
+        }
     )
+    manifest.update(
+        {
+            "answers_run": args.run_dir.name,
+            "scored": len(rows),
+            "of": len(answers),
+            "judge_model": judge,
+            "judge_settings_requested": JUDGE_SETTINGS,
+            "metrics": list(METRICS),
+            "ollama_truncations_total": sum(x["ollama_truncations"] for x in manifest["sessions"]),
+            "status_counts": dict(sorted(statuses.items())),
+            "versions": {p: version(p) for p in ("ragas", "langchain-community", "openai")},
+        }
+    )
+    manifest_path.write_text(json.dumps(manifest, indent=1) + "\n")
     print(json.dumps(manifest["status_counts"]))
 
 

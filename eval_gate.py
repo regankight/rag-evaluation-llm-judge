@@ -33,13 +33,20 @@ class GateResult:
         return not self.failures
 
 
+def total_truncations(manifest: dict) -> int:
+    """Truncations across every scoring session. Older manifests recorded only the last session."""
+    if "sessions" in manifest:
+        return sum(x.get("ollama_truncations", 0) for x in manifest["sessions"])
+    return manifest.get("ollama_truncations_this_session", 0)
+
+
 def load_run(run_dir: str | Path, judge: str = JUDGE) -> dict:
     run_dir = Path(run_dir)
     answers = {r["qid"]: r for r in load_jsonl(run_dir / "answers.jsonl")}
     scores = {r["qid"]: r for r in load_jsonl(run_dir / scores_file(judge))}
     manifest = json.loads((run_dir / "manifest.json").read_text())
     scoring = run_dir / f"scoring-manifest-{judge.replace(':', '_')}.json"
-    truncations = json.loads(scoring.read_text()).get("ollama_truncations_this_session", 0) if scoring.exists() else 0
+    truncations = total_truncations(json.loads(scoring.read_text())) if scoring.exists() else 0
     rows = {q: {**answers[q], "scores": scores.get(q)} for q in answers}
     return {
         "name": run_dir.name,
@@ -47,6 +54,11 @@ def load_run(run_dir: str | Path, judge: str = JUDGE) -> dict:
         "samples_sha256": manifest["samples_sha256"],
         "truncations": truncations,
     }
+
+
+def metric_results(scores: dict) -> list[dict]:
+    """Every judge-metric result in a score row (dicts carrying a status), whatever the metric set."""
+    return [v for v in scores.values() if isinstance(v, dict) and "status" in v]
 
 
 def refused(row: dict) -> bool:
@@ -62,23 +74,32 @@ def evaluate(base: dict, cand: dict) -> GateResult:
         return g
     g.checks.append(("same questions", f"{len(base['rows'])} questions, same frozen sample"))
 
-    # 2. measurement health
+    # 2. measurement health. Any judge error in any metric is broken measurement, and every
+    # answerable answer must have an accuracy value: a blank (NaN) accuracy would otherwise drop
+    # out of the paired comparison and let a gate pass on a shrunken set. Blank faithfulness is
+    # expected for refusals (decision 0007, P5), so it isn't treated as broken.
     for run in (base, cand):
-        missing = [q for q, r in run["rows"].items() if r["scores"] is None]
+        rows = run["rows"].items()
+        missing = [q for q, r in rows if r["scores"] is None]
         errors = [
             q
-            for q, r in run["rows"].items()
-            if r["scores"]
-            and any(str(r["scores"][m]["status"]).startswith("error") for m in ("faithfulness", "answer_accuracy"))
+            for q, r in rows
+            if r["scores"] and any(str(m.get("status", "")).startswith("error") for m in metric_results(r["scores"]))
         ]
-        if missing or errors or run["truncations"]:
+        no_accuracy = [
+            q
+            for q, r in rows
+            if r["scores"] and r["label"] == "answerable" and r["scores"]["answer_accuracy"]["value"] is None
+        ]
+        if missing or errors or no_accuracy or run["truncations"]:
             g.failures.append(
                 f"{run['name']}: {len(missing)} unscored, {len(errors)} judge errors, "
+                f"{len(no_accuracy)} answerable answers without an accuracy score, "
                 f"{run['truncations']} prompt truncations; measurement is broken"
             )
     if g.failures:
         return g
-    g.checks.append(("judge health", "no unscored answers, judge errors or truncations"))
+    g.checks.append(("judge health", "every answer scored, no judge errors, no truncations"))
 
     qids = sorted(base["rows"])
     un = [q for q in qids if base["rows"][q]["label"] == "unanswerable"]
