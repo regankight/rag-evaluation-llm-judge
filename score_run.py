@@ -22,11 +22,14 @@ import httpx
 from dotenv import load_dotenv
 from openai import AsyncOpenAI
 
-from scorers import answer_in_context, failure_label, reference_sentence, string_match
+from scorers import answer_in_context, failure_label, reference_answer, reference_sentence, string_match
 
 # RAGAS adds top_p/max_tokens on its own (seen in the Phase 0 spike); these are ours.
 JUDGE_SETTINGS = {"temperature": 0, "reasoning_effort": "none"}
-FACTUAL_MODE = "recall"  # short gold answers: "does the response contain the gold fact?"
+# Correctness uses RAGAS AnswerAccuracy (designed for short reference answers). FactualCorrectness
+# was tried first and dropped: on this data its claim-splitting step loses the key fact, so
+# correct answers scored 0 (docs/decisions/0006). Old rows may still carry its scores.
+METRICS = ("faithfulness", "context_recall", "answer_accuracy")
 OLLAMA_LOG = Path.home() / ".ollama/logs/server.log"
 TRUNCATION_MARKER = "truncating input prompt"
 
@@ -72,14 +75,25 @@ def load_jsonl(path: Path) -> list[dict]:
     return [json.loads(line) for line in path.read_text().splitlines() if line.strip()] if path.exists() else []
 
 
+def missing_metrics(row: dict) -> list[str]:
+    return [m for m in METRICS if m not in row]
+
+
 def pending(answers: list[dict], done: list[dict]) -> list[dict]:
-    seen = {d["qid"] for d in done}
-    return [a for a in answers if a["qid"] not in seen]
+    """Answers with no score row yet, or a row missing a metric (e.g. one added later)."""
+    by_id = {d["qid"]: d for d in done}
+    return [a for a in answers if missing_metrics(by_id.get(a["qid"], {}))]
+
+
+def write_rows(path: Path, rows: list[dict]) -> None:
+    tmp = path.with_suffix(".tmp")
+    tmp.write_text("".join(json.dumps(r) + "\n" for r in rows))
+    tmp.replace(path)  # atomic: an interrupted write never leaves a half-written file
 
 
 async def main() -> None:
     from ragas.llms import llm_factory
-    from ragas.metrics.collections import ContextRecall, FactualCorrectness, Faithfulness
+    from ragas.metrics.collections import AnswerAccuracy, ContextRecall, Faithfulness
 
     ap = argparse.ArgumentParser()
     ap.add_argument("run_dir", type=Path)
@@ -97,51 +111,53 @@ async def main() -> None:
     client = AsyncOpenAI(base_url=os.environ["OLLAMA_BASE_URL"], api_key="ollama",
                          http_client=httpx.AsyncClient(event_hooks={"request": [capture]}, timeout=600))
     llm = llm_factory(judge, client=client, **JUDGE_SETTINGS)
-    faith, recall = Faithfulness(llm=llm), ContextRecall(llm=llm)
-    factual = FactualCorrectness(llm=llm, mode=FACTUAL_MODE)
+    faith, recall, accuracy = Faithfulness(llm=llm), ContextRecall(llm=llm), AnswerAccuracy(llm=llm)
 
     answers = load_jsonl(args.run_dir / "answers.jsonl")
     out_path = args.run_dir / f"scores-{judge.replace(':', '_')}.jsonl"
-    todo = pending(answers, load_jsonl(out_path))
+    existing = {r["qid"]: r for r in load_jsonl(out_path)}
+    todo = pending(answers, list(existing.values()))
     truncations_before = count_truncations(read_log())
     deadline = time.monotonic() + args.max_minutes * 60
-    print(f"{len(answers) - len(todo)} already scored, {len(todo)} to go")
+    print(f"{len(answers) - len(todo)} fully scored, {len(todo)} to go")
 
     for i, a in enumerate(todo, 1):
         if time.monotonic() > deadline:
             print(f"time budget reached; rerun to continue ({len(todo) - i + 1} left)")
             break
         contexts = [r["text"] for r in a["retrieved"]]
-        row = {"qid": a["qid"], "label": a["label"], **deterministic_scores(a), "judge_model": judge}
-        row["faithfulness"] = (await run_metric(faith.ascore, user_input=a["question"], response=a["answer"],
-                                                retrieved_contexts=contexts)
-                               if contexts else not_applicable("no_context"))
-        if a["label"] == "answerable":
-            ref = reference_sentence(a["question"], a["gold_answers"])
-            row["context_recall"] = (await run_metric(recall.ascore, user_input=a["question"],
-                                                      retrieved_contexts=contexts, reference=ref)
-                                     if contexts else not_applicable("no_context"))
-            row["factual_correctness"] = await run_metric(factual.ascore, response=a["answer"], reference=ref)
-        else:
-            row["context_recall"] = not_applicable("no_reference")
-            row["factual_correctness"] = not_applicable("no_reference")
-        with open(out_path, "a") as f:
-            f.write(json.dumps(row) + "\n")
+        answerable = a["label"] == "answerable"
+        row = existing.get(a["qid"]) or {"qid": a["qid"], "label": a["label"], **deterministic_scores(a),
+                                         "judge_model": judge}
+        for m in missing_metrics(row):
+            if m == "faithfulness":
+                row[m] = (await run_metric(faith.ascore, user_input=a["question"], response=a["answer"],
+                                           retrieved_contexts=contexts) if contexts else not_applicable("no_context"))
+            elif not answerable:
+                row[m] = not_applicable("no_reference")
+            elif m == "context_recall":
+                row[m] = (await run_metric(recall.ascore, user_input=a["question"], retrieved_contexts=contexts,
+                                           reference=reference_sentence(a["question"], a["gold_answers"]))
+                          if contexts else not_applicable("no_context"))
+            elif m == "answer_accuracy":
+                row[m] = await run_metric(accuracy.ascore, user_input=a["question"], response=a["answer"],
+                                          reference=reference_answer(a["gold_answers"]))
+        existing[a["qid"]] = row
+        write_rows(out_path, [existing[x["qid"]] for x in answers if x["qid"] in existing])
         print(f"[{i}/{len(todo)}] {a['label']:12} sm={row['string_match']!s:5} "
-              f"faith={row['faithfulness']['value']} recall={row['context_recall']['value']} "
-              f"fact={row['factual_correctness']['value']} ({row['faithfulness']['status']})")
+              + " ".join(f"{m}={row[m]['value']}" for m in METRICS))
 
     truncated = count_truncations(read_log()) - truncations_before
     if truncated:
         print(f"WARNING: Ollama truncated {truncated} judge prompt(s) this session; scores are INVALID")
     rows = load_jsonl(out_path)
     statuses = Counter(f"{m}:{r[m]['status'].split(':')[0]}" for r in rows
-                       for m in ("faithfulness", "context_recall", "factual_correctness"))
+                       for m in METRICS if m in r)
     manifest = {
         "answers_run": args.run_dir.name, "scored": len(rows), "of": len(answers),
         "judge_model": judge, "judge_settings_requested": JUDGE_SETTINGS,
         "judge_settings_sent_this_session": sorted({json.dumps(s, sort_keys=True) for s in sent}),
-        "factual_correctness_mode": FACTUAL_MODE,
+        "metrics": list(METRICS),
         "ollama_truncations_this_session": truncated, "status_counts": dict(sorted(statuses.items())),
         "versions": {p: version(p) for p in ("ragas", "langchain-community", "openai")},
     }

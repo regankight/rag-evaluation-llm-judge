@@ -60,3 +60,9 @@ def reference_sentence(question: str, gold_answers: list[str]) -> str:
     first, rest = gold_answers[0], gold_answers[1:]
     extra = f" (also accepted: {'; '.join(rest)})" if rest else ""
     return f'The answer to the question "{question}" is: {first}{extra}.'
+
+
+def reference_answer(gold_answers: list[str]) -> str:
+    """Short reference for AnswerAccuracy, which is designed for short answers."""
+    first, rest = gold_answers[0], gold_answers[1:]
+    return f"{first} (also accepted: {'; '.join(rest)})" if rest else first

@@ -63,3 +63,9 @@ def test_reference_sentence_wraps_fragment_with_question():
     assert reference_sentence("When was it founded?", ["1939"]) == \
         'The answer to the question "When was it founded?" is: 1939.'
     assert reference_sentence("Q?", ["A", "B"]).endswith("is: A (also accepted: B).")
+
+
+def test_reference_answer_keeps_short_form():
+    from scorers import reference_answer
+    assert reference_answer(["March 2013"]) == "March 2013"
+    assert reference_answer(["A", "B", "C"]) == "A (also accepted: B; C)"
