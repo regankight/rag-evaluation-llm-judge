@@ -1,0 +1,362 @@
+{
+ "n": {
+  "questions": 150,
+  "answerable": 100,
+  "unanswerable": 50
+ },
+ "v1_pattern_vs_human": {
+  "agree": 134,
+  "n": 150,
+  "disagreements": [
+   {
+    "qid": "04b77c2c33a5",
+    "human": "refused",
+    "pattern": "answered",
+    "answer": "Her exact birth date is not given in the provided context."
+   },
+   {
+    "qid": "05caf338a910",
+    "human": "answered",
+    "pattern": "refused",
+    "answer": "They finished 27–55, but the context doesn’t specify their league rank."
+   },
+   {
+    "qid": "075c5daa03a9",
+    "human": "answered",
+    "pattern": "refused",
+    "answer": "The context doesn’t say who developed the first view camera. It says view cameras first appeared in the daguerreotype era (the 1840s–1850s)."
+   },
+   {
+    "qid": "4568515eb4bf",
+    "human": "answered",
+    "pattern": "refused",
+    "answer": "The context doesn’t specify when *King Lear* was first performed. It notes that the first Argo Shakespeare recording was made in 1957."
+   },
+   {
+    "qid": "4d22caa144a0",
+    "human": "refused",
+    "pattern": "answered",
+    "answer": "The context does not identify a university with the most prestigious Statistics department."
+   },
+   {
+    "qid": "5556f0418eaa",
+    "human": "answered",
+    "pattern": "refused",
+    "answer": "The context doesn’t specify which racket material is lightest. It notes that modern rackets are often made from graphite composites."
+   },
+   {
+    "qid": "6c432392fdbe",
+    "human": "answered",
+    "pattern": "refused",
+    "answer": "The context doesn’t specify the park’s current total area. It says 48,000 acres were added in 1978."
+   },
+   {
+    "qid": "6fd95ef9af67",
+    "human": "refused",
+    "pattern": "answered",
+    "answer": "The provided context doesn’t explain how to join the Union of Australian Women."
+   },
+   {
+    "qid": "82d593bc87dc",
+    "human": "answered",
+    "pattern": "refused",
+    "answer": "The context doesn’t say how much student athletes earn. It notes that only about 2% of high school athletes receive an NCAA athletic scholarship, averaging less than $11,000."
+   },
+   {
+    "qid": "88bc57dad924",
+    "human": "refused",
+    "pattern": "answered",
+    "answer": "The context does not identify the first Adjutant General of Maryland."
+   },
+   {
+    "qid": "aa4d685fec05",
+    "human": "refused",
+    "pattern": "answered",
+    "answer": "The provided context does not identify the president of the Berkeley Student Cooperative."
+   },
+   {
+    "qid": "aa6b0a423f49",
+    "human": "refused",
+    "pattern": "answered",
+    "answer": "The village’s founding date isn’t stated in the provided context."
+   },
+   {
+    "qid": "c0d2669f91d9",
+    "human": "answered",
+    "pattern": "refused",
+    "answer": "The context does not specify the percentage of Denmark’s population that is Catholic. It describes Catholics as a small minority."
+   },
+   {
+    "qid": "c368a8a5d872",
+    "human": "answered",
+    "pattern": "refused",
+    "answer": "The context doesn’t specify when the first phone with text messaging capabilities was released. It says the first SMS was sent on December 3, 1992."
+   },
+   {
+    "qid": "cd922ab8b1d7",
+    "human": "answered",
+    "pattern": "refused",
+    "answer": "The context doesn’t specify which U.S. state has the largest information technology industry. It identifies Massachusetts as a major high-tech center."
+   },
+   {
+    "qid": "da98fd81bf63",
+    "human": "answered",
+    "pattern": "refused",
+    "answer": "The context doesn’t specify Syracuse University’s degree plans. It mentions a joint Master of Public Health program with SUNY Upstate and a specialized bachelor’s degree available through Utica College."
+   }
+  ]
+ },
+ "v2_marker_methods": {
+  "marker": 150
+ },
+ "P1": {
+  "v1": {
+   "k": 29,
+   "n": 50,
+   "pct": 58.0
+  },
+  "v2": {
+   "k": 12,
+   "n": 50,
+   "pct": 24.0
+  },
+  "discordant_b_v1_only": 17,
+  "discordant_c_v2_only": 0,
+  "mcnemar_p": 1.52587890625e-05
+ },
+ "borderline": {
+  "n_total": 10,
+  "n_unanswerable": 6,
+  "human_labels": {
+   "refused": 1,
+   "answered": 9
+  },
+  "P1_v1_if_all_refused": {
+   "k": 24,
+   "n": 50,
+   "pct": 48.0
+  },
+  "P1_v1_if_all_answered": {
+   "k": 30,
+   "n": 50,
+   "pct": 60.0
+  },
+  "examples": [
+   "The context doesn’t say who developed the first view camera. It says view cameras first appeared in the daguerreotype era (the 1840s–1850s).",
+   "The context doesn’t specify when *King Lear* was first performed. It notes that the first Argo Shakespeare recording was made in 1957.",
+   "The context doesn’t specify which racket material is lightest. It notes that modern rackets are often made from graphite composites.",
+   "The context doesn’t specify the park’s current total area. It says 48,000 acres were added in 1978."
+  ]
+ },
+ "P2": {
+  "v1": {
+   "k": 0,
+   "n": 52,
+   "pct": 0.0
+  },
+  "v2": {
+   "k": 2,
+   "n": 52,
+   "pct": 3.8
+  }
+ },
+ "P3": {
+  "v1": {
+   "k": 38,
+   "n": 48,
+   "pct": 79.2
+  },
+  "v2": {
+   "k": 17,
+   "n": 48,
+   "pct": 35.4
+  }
+ },
+ "P4": {
+  "v1_mean": 0.54,
+  "v2_mean": 0.4925,
+  "diff": -0.0475,
+  "ci95": [
+   -0.1,
+   0.0025
+  ],
+  "n_paired": 100,
+  "missing": 0
+ },
+ "P4_by_retrieval": {
+  "gold_retrieved": {
+   "n": 52,
+   "diff": 0.0192
+  },
+  "gold_not_retrieved": {
+   "n": 48,
+   "diff": -0.1198
+  }
+ },
+ "P5": {
+  "v1": {
+   "refusals": 31,
+   "nan": 0,
+   "scored": 31,
+   "mean_when_scored": 0.935
+  },
+  "v2": {
+   "refusals": 71,
+   "nan": 69,
+   "scored": 2,
+   "mean_when_scored": 1.0
+  }
+ },
+ "scorers_on_real_answers": {
+  "n": 200,
+  "table": {
+   "sm_True_judge_True": 82,
+   "sm_True_judge_False": 6,
+   "sm_False_judge_True": 33,
+   "sm_False_judge_False": 79
+  },
+  "agree": 161,
+  "examples_judge_yes_string_no": [
+   {
+    "prompt": "v1",
+    "question": "What years did Paganini live?",
+    "answer": "Paganini lived from 1782 to 1840.",
+    "gold": [
+     "27 October 1782–27 May 1840",
+     "1782–27 May 1840"
+    ],
+    "judge": 1.0
+   },
+   {
+    "prompt": "v1",
+    "question": "What's the real name of the guy called \"La Bamba\" in the Max Weinberg band on Late Night with Conan O'Brien?",
+    "answer": "His real name is Richie Rosenberg.",
+    "gold": [
+     "Richie \"LaBamba\" Rosenberg"
+    ],
+    "judge": 1.0
+   },
+   {
+    "prompt": "v1",
+    "question": "Which countries border the Persian Gulf?",
+    "answer": "Iran, Oman (via its Musandam exclave), the United Arab Emirates, Saudi Arabia, Qatar, Bahrain, Kuwait, and Iraq.",
+    "gold": [
+     "Iran; Oman's Musandam exclave; the United Arab Emirates; Saudi Arabia Qatar, on a peninsula off the Saudi coast; Bahrain, on an island; Kuwait; and Iraq in the northwest",
+     "Iran; Oman's Musandam exclave; the United Arab Emirates; Saudi Arabia Qatar, on a peninsula off the Saudi coast; Bahrain, on an island; Kuwait; and Iraq"
+    ],
+    "judge": 1.0
+   },
+   {
+    "prompt": "v1",
+    "question": "When was Sima Qian born?",
+    "answer": "Sima Qian was born around 145 BC, though some sources place his birth around 135 BC.",
+    "gold": [
+     "around 145BC, though some sources give his birth year as around 135BC",
+     "around 145BC"
+    ],
+    "judge": 1.0
+   },
+   {
+    "prompt": "v1",
+    "question": "How do you do a hangi?",
+    "answer": "A traditional Māori hāngī cooks food in an earth oven: heat stones in a fire, place them in a pit, set baskets of food over the stones, cover everything with damp cloths and soil, and leave it to steam for several hours.",
+    "gold": [
+     "To \"lay a hāngi\" or \"put down a hāngi\" involves digging a pit in the ground, heating stones in the pit with a large fire, placing baskets of food on top of the stones, and covering everything with earth for several hours before uncovering (or lifting) the hāngi",
+     "digging a pit in the ground, heating stones in the pit with a large fire, placing baskets of food on top of the stones, and covering everything with earth for several hours"
+    ],
+    "judge": 0.75
+   }
+  ],
+  "examples_string_yes_judge_no": [
+   {
+    "prompt": "v1",
+    "question": "Who first used the term thermodynamics?",
+    "answer": "William Thomson (Lord Kelvin) first used the term “thermodynamics” in 1854.",
+    "gold": [
+     "William Thomson",
+     "Lord Kelvin"
+    ],
+    "judge": 0.25
+   },
+   {
+    "prompt": "v1",
+    "question": "Who discovered the NEDD9 gene?",
+    "answer": "Kumar et al. first described a NEDD9 sequence tag in 1992. Law et al. and Minegishi et al. independently reported the complete gene sequence in 1996.",
+    "gold": [
+     "Kumar",
+     "Kumar, et al"
+    ],
+    "judge": 0.25
+   },
+   {
+    "prompt": "v1",
+    "question": "When did I Am Setsuna come out?",
+    "answer": "I Am Setsuna was released in Japan in February 2016, worldwide for PS4 and PC in July 2016, and for Nintendo Switch on March 3, 2017.",
+    "gold": [
+     "2016",
+     "February 2016"
+    ],
+    "judge": 0.25
+   },
+   {
+    "prompt": "v1",
+    "question": "When was Major League Baseball founded?",
+    "answer": "Major League Baseball’s National League was founded in 1876, and the American League in 1901. The leagues merged into one organization in 2000.",
+    "gold": [
+     "2000"
+    ],
+    "judge": 0.25
+   },
+   {
+    "prompt": "v2",
+    "question": "Who first used the term thermodynamics?",
+    "answer": "William Thomson (Lord Kelvin) first used the term “thermodynamics” in 1854.",
+    "gold": [
+     "William Thomson",
+     "Lord Kelvin"
+    ],
+    "judge": 0.25
+   }
+  ]
+ },
+ "failure_labels_judge_based": {
+  "v1": {
+   "correct": 45,
+   "correct_without_gold_passage": 14,
+   "generation_error": 7,
+   "retrieval_miss": 24,
+   "refused": 10
+  },
+  "v2": {
+   "correct": 47,
+   "correct_without_gold_passage": 9,
+   "generation_error": 3,
+   "retrieval_miss": 8,
+   "refused": 33
+  }
+ },
+ "eval_set_size": {
+  "10": 0.237,
+  "25": 0.175,
+  "50": 0.125,
+  "100": 0.086
+ },
+ "cost": {
+  "generation_usd_per_100": {
+   "v1": 0.0077,
+   "v2": 0.0074
+  },
+  "judge_median_seconds": {
+   "faithfulness": 29.9,
+   "context_recall": 24.7,
+   "answer_accuracy": 5.3
+  },
+  "judge_minutes_per_100_answerable_all_metrics": 99.8,
+  "string_match": "microseconds, $0"
+ },
+ "known_truth": {
+  "n": 360,
+  "string_match_right": 300,
+  "judge_right": 358
+ }
+}
