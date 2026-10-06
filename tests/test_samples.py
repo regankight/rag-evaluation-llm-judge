@@ -3,8 +3,9 @@ import pytest
 from samples import draw
 from tydiqa import ANSWERABLE, UNANSWERABLE, Question
 
-QS = [Question(f"a{i}", "q", ANSWERABLE, "d") for i in range(10)] + \
-     [Question(f"u{i}", "q", UNANSWERABLE, "d") for i in range(6)]
+QS = [Question(f"a{i}", "q", ANSWERABLE, "d") for i in range(10)] + [
+    Question(f"u{i}", "q", UNANSWERABLE, "d") for i in range(6)
+]
 SIZES = {"dev": {ANSWERABLE: 2, UNANSWERABLE: 1}, "held_out": {ANSWERABLE: 5, UNANSWERABLE: 3}}
 
 

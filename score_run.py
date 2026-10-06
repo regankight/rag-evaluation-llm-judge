@@ -6,6 +6,7 @@ Resumable: scores are appended per answer, and answers already scored are skippe
 long run can be split into chunks. Failed or blank judge scores are recorded with a
 status, never dropped (decision D12).
 """
+
 from __future__ import annotations
 
 import argparse
@@ -22,8 +23,14 @@ import httpx
 from dotenv import load_dotenv
 from openai import AsyncOpenAI
 
-from scorers import (answer_in_context, classify_response, failure_label, reference_answer, reference_sentence,
-                     string_match)
+from scorers import (
+    answer_in_context,
+    classify_response,
+    failure_label,
+    reference_answer,
+    reference_sentence,
+    string_match,
+)
 
 # RAGAS adds top_p/max_tokens on its own (seen in the Phase 0 spike); these are ours.
 JUDGE_SETTINGS = {"temperature": 0, "reasoning_effort": "none"}
@@ -66,12 +73,14 @@ def deterministic_scores(a: dict) -> dict:
     answerable = a["label"] == "answerable"
     correct = answerable and string_match(a["answer"], a["gold_answers"])
     in_ctx = answerable and answer_in_context(a["gold_answers"], contexts)
-    return {"string_match": correct if answerable else None,
-            "answer_in_context": in_ctx if answerable else None,
-            "gold_passage_retrieved": a["gold_retrieved"] if answerable else None,
-            "failure_label_string_match": failure_label(answerable, in_ctx, correct),
-            # Answer records made before prompt versions existed are v1 (record 0007).
-            **classify_response(a["answer"], a.get("prompt_version", "v1-baseline"))}
+    return {
+        "string_match": correct if answerable else None,
+        "answer_in_context": in_ctx if answerable else None,
+        "gold_passage_retrieved": a["gold_retrieved"] if answerable else None,
+        "failure_label_string_match": failure_label(answerable, in_ctx, correct),
+        # Answer records made before prompt versions existed are v1 (record 0007).
+        **classify_response(a["answer"], a.get("prompt_version", "v1-baseline")),
+    }
 
 
 def load_jsonl(path: Path) -> list[dict]:
@@ -111,8 +120,11 @@ async def main() -> None:
         body = json.loads(req.content)
         sent.append({k: v for k, v in body.items() if k not in ("messages", "tools", "response_format")})
 
-    client = AsyncOpenAI(base_url=os.environ["OLLAMA_BASE_URL"], api_key="ollama",
-                         http_client=httpx.AsyncClient(event_hooks={"request": [capture]}, timeout=600))
+    client = AsyncOpenAI(
+        base_url=os.environ["OLLAMA_BASE_URL"],
+        api_key="ollama",
+        http_client=httpx.AsyncClient(event_hooks={"request": [capture]}, timeout=600),
+    )
     llm = llm_factory(judge, client=client, **JUDGE_SETTINGS)
     faith, recall, accuracy = Faithfulness(llm=llm), ContextRecall(llm=llm), AnswerAccuracy(llm=llm)
 
@@ -130,41 +142,68 @@ async def main() -> None:
             break
         contexts = [r["text"] for r in a["retrieved"]]
         answerable = a["label"] == "answerable"
-        row = existing.get(a["qid"]) or {"qid": a["qid"], "label": a["label"], **deterministic_scores(a),
-                                         "judge_model": judge}
+        row = existing.get(a["qid"]) or {
+            "qid": a["qid"],
+            "label": a["label"],
+            **deterministic_scores(a),
+            "judge_model": judge,
+        }
         for m in missing_metrics(row):
             if m == "faithfulness":
-                row[m] = (await run_metric(faith.ascore, user_input=a["question"], response=a["answer"],
-                                           retrieved_contexts=contexts) if contexts else not_applicable("no_context"))
+                row[m] = (
+                    await run_metric(
+                        faith.ascore, user_input=a["question"], response=a["answer"], retrieved_contexts=contexts
+                    )
+                    if contexts
+                    else not_applicable("no_context")
+                )
             elif not answerable:
                 row[m] = not_applicable("no_reference")
             elif m == "context_recall":
-                row[m] = (await run_metric(recall.ascore, user_input=a["question"], retrieved_contexts=contexts,
-                                           reference=reference_sentence(a["question"], a["gold_answers"]))
-                          if contexts else not_applicable("no_context"))
+                row[m] = (
+                    await run_metric(
+                        recall.ascore,
+                        user_input=a["question"],
+                        retrieved_contexts=contexts,
+                        reference=reference_sentence(a["question"], a["gold_answers"]),
+                    )
+                    if contexts
+                    else not_applicable("no_context")
+                )
             elif m == "answer_accuracy":
-                row[m] = await run_metric(accuracy.ascore, user_input=a["question"], response=a["answer"],
-                                          reference=reference_answer(a["gold_answers"]))
+                row[m] = await run_metric(
+                    accuracy.ascore,
+                    user_input=a["question"],
+                    response=a["answer"],
+                    reference=reference_answer(a["gold_answers"]),
+                )
         existing[a["qid"]] = row
         write_rows(out_path, [existing[x["qid"]] for x in answers if x["qid"] in existing])
-        print(f"[{i}/{len(todo)}] {a['label']:12} sm={row['string_match']!s:5} "
-              + " ".join(f"{m}={row[m]['value']}" for m in METRICS))
+        print(
+            f"[{i}/{len(todo)}] {a['label']:12} sm={row['string_match']!s:5} "
+            + " ".join(f"{m}={row[m]['value']}" for m in METRICS)
+        )
 
     truncated = count_truncations(read_log()) - truncations_before
     if truncated:
         print(f"WARNING: Ollama truncated {truncated} judge prompt(s) this session; scores are INVALID")
     rows = load_jsonl(out_path)
-    statuses = Counter(f"{m}:{r[m]['status'].split(':')[0]}" for r in rows
-                       for m in METRICS if m in r)
+    statuses = Counter(f"{m}:{r[m]['status'].split(':')[0]}" for r in rows for m in METRICS if m in r)
     manifest = {
-        "answers_run": args.run_dir.name, "scored": len(rows), "of": len(answers),
-        "judge_model": judge, "judge_settings_requested": JUDGE_SETTINGS,
+        "answers_run": args.run_dir.name,
+        "scored": len(rows),
+        "of": len(answers),
+        "judge_model": judge,
+        "judge_settings_requested": JUDGE_SETTINGS,
         "judge_settings_sent_this_session": sorted({json.dumps(s, sort_keys=True) for s in sent}),
         "metrics": list(METRICS),
-        "ollama_truncations_this_session": truncated, "status_counts": dict(sorted(statuses.items())),
+        "ollama_truncations_this_session": truncated,
+        "status_counts": dict(sorted(statuses.items())),
         "versions": {p: version(p) for p in ("ragas", "langchain-community", "openai")},
     }
-    (args.run_dir / f"scoring-manifest-{judge.replace(':', '_')}.json").write_text(json.dumps(manifest, indent=1) + "\n")
+    (args.run_dir / f"scoring-manifest-{judge.replace(':', '_')}.json").write_text(
+        json.dumps(manifest, indent=1) + "\n"
+    )
     print(json.dumps(manifest["status_counts"]))
 
 

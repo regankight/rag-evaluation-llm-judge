@@ -5,6 +5,7 @@
 Reads only saved artifacts (answers, judge scores, human labels, known-truth scores), so every
 number in the README can be regenerated without the judge, the API key, or the network.
 """
+
 from __future__ import annotations
 
 import json
@@ -14,9 +15,8 @@ import statistics
 from math import comb
 from pathlib import Path
 
-from scorers import ANSWERED, REFUSED, classify_response
-
 from runs import HELD_OUT, JUDGE, JUDGE_CORRECT_AT, scores_file
+from scorers import ANSWERED, REFUSED, classify_response
 
 RUNS = {"v1": HELD_OUT["v1-baseline"], "v2": HELD_OUT["v2-not-in-context"]}
 SEED = 20261006
@@ -25,12 +25,13 @@ B = 10_000  # bootstrap resamples
 
 # ---------- statistics (unit-tested) ----------
 
+
 def mcnemar_exact(b: int, c: int) -> float:
     """Two-sided exact McNemar p-value from the discordant pair counts b and c."""
     n = b + c
     if n == 0:
         return 1.0
-    tail = sum(comb(n, i) for i in range(min(b, c) + 1)) / 2 ** n
+    tail = sum(comb(n, i) for i in range(min(b, c) + 1)) / 2**n
     return min(1.0, 2 * tail)
 
 
@@ -85,8 +86,7 @@ def load() -> dict:
     sample = json.loads(Path("review/sample.json").read_text())
     labels = json.loads(Path("review/review-results.json").read_text())["part_a"]
     human_v1 = {x["qid"]: labels[x["id"]] for x in sample["part_a"] if x["id"] in labels}
-    return {"runs": data, "human_v1": human_v1,
-            "known_truth": load_jsonl(Path("known_truth", scores_file()))}
+    return {"runs": data, "human_v1": human_v1, "known_truth": load_jsonl(Path("known_truth", scores_file()))}
 
 
 def refusal(v: str, row: dict, human_v1: dict) -> str:
@@ -95,6 +95,7 @@ def refusal(v: str, row: dict, human_v1: dict) -> str:
 
 
 # ---------- analysis ----------
+
 
 def rate(xs: list[bool]) -> dict:
     return {"k": sum(xs), "n": len(xs), "pct": round(100 * sum(xs) / len(xs), 1) if xs else None}
@@ -112,10 +113,15 @@ def analyze(d: dict) -> dict:
 
     # human vs first-pass pattern (v1)
     pattern = {q: classify_response(runs["v1"][q]["answer"], "v1-baseline")["refusal"] for q in qids}
-    out["v1_pattern_vs_human"] = {"agree": sum(pattern[q] == human[q] for q in qids), "n": len(qids),
-                                  "disagreements": [{"qid": q, "human": human[q], "pattern": pattern[q],
-                                                     "answer": runs["v1"][q]["answer"]}
-                                                    for q in qids if pattern[q] != human[q]]}
+    out["v1_pattern_vs_human"] = {
+        "agree": sum(pattern[q] == human[q] for q in qids),
+        "n": len(qids),
+        "disagreements": [
+            {"qid": q, "human": human[q], "pattern": pattern[q], "answer": runs["v1"][q]["answer"]}
+            for q in qids
+            if pattern[q] != human[q]
+        ],
+    }
     v2_methods: dict = {}
     for q in qids:
         m = classify_response(runs["v2"][q]["answer"], "v2-not-in-context")["method"]
@@ -126,18 +132,27 @@ def analyze(d: dict) -> dict:
     made_up = {v: [R[v][q] == ANSWERED for q in unans] for v in runs}
     b = sum(1 for q in unans if R["v1"][q] == ANSWERED and R["v2"][q] == REFUSED)
     c = sum(1 for q in unans if R["v1"][q] == REFUSED and R["v2"][q] == ANSWERED)
-    out["P1"] = {"v1": rate(made_up["v1"]), "v2": rate(made_up["v2"]), "discordant_b_v1_only": b,
-                 "discordant_c_v2_only": c, "mcnemar_p": mcnemar_exact(b, c)}
+    out["P1"] = {
+        "v1": rate(made_up["v1"]),
+        "v2": rate(made_up["v2"]),
+        "discordant_b_v1_only": b,
+        "discordant_c_v2_only": c,
+        "mcnemar_p": mcnemar_exact(b, c),
+    }
 
     # borderline group (v1 refuses-plus-extra), sensitivity of P1
     border = [q for q in qids if refuses_plus_extra(runs["v1"][q]["answer"])]
     border_un = [q for q in border if q in unans]
     as_refused = [R["v1"][q] == ANSWERED and q not in border_un for q in unans]
     as_answered = [R["v1"][q] == ANSWERED or q in border_un for q in unans]
-    out["borderline"] = {"n_total": len(border), "n_unanswerable": len(border_un),
-                         "human_labels": {lbl: sum(human[q] == lbl for q in border) for lbl in (REFUSED, ANSWERED)},
-                         "P1_v1_if_all_refused": rate(as_refused), "P1_v1_if_all_answered": rate(as_answered),
-                         "examples": [runs["v1"][q]["answer"] for q in border[:4]]}
+    out["borderline"] = {
+        "n_total": len(border),
+        "n_unanswerable": len(border_un),
+        "human_labels": {lbl: sum(human[q] == lbl for q in border) for lbl in (REFUSED, ANSWERED)},
+        "P1_v1_if_all_refused": rate(as_refused),
+        "P1_v1_if_all_answered": rate(as_answered),
+        "examples": [runs["v1"][q]["answer"] for q in border[:4]],
+    }
 
     # P2 over-refusal, P3 ungrounded answers
     ret = [q for q in ans if gold_ret[q]]
@@ -158,67 +173,117 @@ def analyze(d: dict) -> dict:
     paired = [q for q in ans if acc["v1"][q] is not None and acc["v2"][q] is not None]
     diffs = [acc["v2"][q] - acc["v1"][q] for q in paired]
     mean, lo, hi = paired_bootstrap_ci(diffs)
-    out["P4"] = {"v1_mean": round(statistics.mean(acc["v1"][q] for q in paired), 4),
-                 "v2_mean": round(statistics.mean(acc["v2"][q] for q in paired), 4),
-                 "diff": round(mean, 4), "ci95": [round(lo, 4), round(hi, 4)], "n_paired": len(paired),
-                 "missing": len(ans) - len(paired)}
+    out["P4"] = {
+        "v1_mean": round(statistics.mean(acc["v1"][q] for q in paired), 4),
+        "v2_mean": round(statistics.mean(acc["v2"][q] for q in paired), 4),
+        "diff": round(mean, 4),
+        "ci95": [round(lo, 4), round(hi, 4)],
+        "n_paired": len(paired),
+        "missing": len(ans) - len(paired),
+    }
     # where the accuracy change comes from: retrieval hit vs miss
-    out["P4_by_retrieval"] = {k: {"n": len(qs), "diff": round(statistics.mean(acc["v2"][q] - acc["v1"][q] for q in qs), 4)}
-                              for k, qs in (("gold_retrieved", [q for q in ret if q in paired]),
-                                            ("gold_not_retrieved", [q for q in miss if q in paired]))}
+    out["P4_by_retrieval"] = {
+        k: {"n": len(qs), "diff": round(statistics.mean(acc["v2"][q] - acc["v1"][q] for q in qs), 4)}
+        for k, qs in (
+            ("gold_retrieved", [q for q in ret if q in paired]),
+            ("gold_not_retrieved", [q for q in miss if q in paired]),
+        )
+    }
 
     # P5 faithfulness on refusals
     def faith(v, q):
         return runs[v][q]["scores"]["faithfulness"]
+
     p5 = {}
     for v in runs:
         refs = [q for q in qids if R[v][q] == REFUSED]
         st = [faith(v, q)["status"] for q in refs]
         vals = [faith(v, q)["value"] for q in refs if faith(v, q)["value"] is not None]
-        p5[v] = {"refusals": len(refs), "nan": st.count("nan"), "scored": len(vals),
-                 "mean_when_scored": round(statistics.mean(vals), 3) if vals else None}
+        p5[v] = {
+            "refusals": len(refs),
+            "nan": st.count("nan"),
+            "scored": len(vals),
+            "mean_when_scored": round(statistics.mean(vals), 3) if vals else None,
+        }
     out["P5"] = p5
 
     # context recall: validated against deterministic retrieval signals, and repeatability
     # (v1 and v2 share question, passages and reference, so their scores should be identical)
     cr = {v: {q: runs[v][q]["scores"]["context_recall"]["value"] for q in ans} for v in runs}
+
     def cr_table(signal):
-        return {f"signal_{a}_judge_{b_}": sum(1 for q in ans if cr["v1"][q] is not None and signal(q) == a
-                                              and (cr["v1"][q] >= JUDGE_CORRECT_AT) == b_)
-                for a in (True, False) for b_ in (True, False)}
+        return {
+            f"signal_{a}_judge_{b_}": sum(
+                1 for q in ans if cr["v1"][q] is not None and signal(q) == a and (cr["v1"][q] >= JUDGE_CORRECT_AT) == b_
+            )
+            for a in (True, False)
+            for b_ in (True, False)
+        }
+
     out["context_recall_check"] = {
         "vs_gold_passage_retrieved": cr_table(lambda q: gold_ret[q]),
         "vs_gold_passage_or_answer_text_retrieved": cr_table(lambda q: gold_ret[q] or in_ctx[q]),
         "repeatable_v1_v2": sum(cr["v1"][q] == cr["v2"][q] for q in ans),
         "identical_inputs_v1_v2": sum(runs["v1"][q]["retrieved"] == runs["v2"][q]["retrieved"] for q in ans),
-        "n": len(ans)}
+        "n": len(ans),
+    }
 
     # string match vs judge on real answers (answerable, both prompts)
     rows = [(v, q) for v in runs for q in ans if runs[v][q]["scores"]["answer_accuracy"]["value"] is not None]
-    def sm(v, q): return bool(runs[v][q]["scores"]["string_match"])
-    def jd(v, q): return runs[v][q]["scores"]["answer_accuracy"]["value"] >= JUDGE_CORRECT_AT
-    table = {f"sm_{a}_judge_{b_}": sum(1 for v, q in rows if sm(v, q) == a and jd(v, q) == b_)
-             for a in (True, False) for b_ in (True, False)}
+
+    def sm(v, q):
+        return bool(runs[v][q]["scores"]["string_match"])
+
+    def jd(v, q):
+        return runs[v][q]["scores"]["answer_accuracy"]["value"] >= JUDGE_CORRECT_AT
+
+    table = {
+        f"sm_{a}_judge_{b_}": sum(1 for v, q in rows if sm(v, q) == a and jd(v, q) == b_)
+        for a in (True, False)
+        for b_ in (True, False)
+    }
+
     def ex(a, b_):
-        return [{"prompt": v, "question": runs[v][q]["question"], "answer": runs[v][q]["answer"],
-                 "gold": runs[v][q]["gold_answers"][:2], "judge": runs[v][q]["scores"]["answer_accuracy"]["value"]}
-                for v, q in rows if sm(v, q) == a and jd(v, q) == b_][:5]
-    out["scorers_on_real_answers"] = {"n": len(rows), "table": table,
-                                      "agree": table["sm_True_judge_True"] + table["sm_False_judge_False"],
-                                      "examples_judge_yes_string_no": ex(False, True),
-                                      "examples_string_yes_judge_no": ex(True, False)}
+        return [
+            {
+                "prompt": v,
+                "question": runs[v][q]["question"],
+                "answer": runs[v][q]["answer"],
+                "gold": runs[v][q]["gold_answers"][:2],
+                "judge": runs[v][q]["scores"]["answer_accuracy"]["value"],
+            }
+            for v, q in rows
+            if sm(v, q) == a and jd(v, q) == b_
+        ][:5]
+
+    out["scorers_on_real_answers"] = {
+        "n": len(rows),
+        "table": table,
+        "agree": table["sm_True_judge_True"] + table["sm_False_judge_False"],
+        "examples_judge_yes_string_no": ex(False, True),
+        "examples_string_yes_judge_no": ex(True, False),
+    }
 
     # failure labels (judge-based correctness; retrieval = gold passage retrieved)
     fl = {}
     for v in runs:
-        counts = {"correct": 0, "correct_without_gold_passage": 0, "generation_error": 0, "retrieval_miss": 0, "refused": 0}
+        counts = {
+            "correct": 0,
+            "correct_without_gold_passage": 0,
+            "generation_error": 0,
+            "retrieval_miss": 0,
+            "refused": 0,
+        }
         for q in ans:
             if R[v][q] == REFUSED:
                 counts["refused"] += 1
                 continue
             ok = acc[v][q] is not None and acc[v][q] >= JUDGE_CORRECT_AT
-            key = ("correct" if gold_ret[q] else "correct_without_gold_passage") if ok else \
-                  ("generation_error" if gold_ret[q] else "retrieval_miss")
+            key = (
+                ("correct" if gold_ret[q] else "correct_without_gold_passage")
+                if ok
+                else ("generation_error" if gold_ret[q] else "retrieval_miss")
+            )
             counts[key] += 1
         fl[v] = counts
     out["failure_labels_judge_based"] = fl
@@ -229,25 +294,37 @@ def analyze(d: dict) -> dict:
 
     # cost and time per scorer
     gen_cost = {v: json.loads(Path(RUNS[v], "manifest.json").read_text())["totals"]["cost_usd"] for v in runs}
-    secs = {m: statistics.median(runs[v][q]["scores"][m]["seconds"] for v in runs for q in qids
-                                 if runs[v][q]["scores"][m]["status"] == "ok")
-            for m in ("faithfulness", "context_recall", "answer_accuracy")}
-    out["cost"] = {"generation_usd_per_100": {v: round(c / len(qids) * 100, 4) for v, c in gen_cost.items()},
-                   "judge_median_seconds": secs,
-                   "judge_minutes_per_100_answerable_all_metrics": round(sum(secs.values()) * 100 / 60, 1),
-                   "string_match": "microseconds, $0"}
+    secs = {
+        m: statistics.median(
+            runs[v][q]["scores"][m]["seconds"] for v in runs for q in qids if runs[v][q]["scores"][m]["status"] == "ok"
+        )
+        for m in ("faithfulness", "context_recall", "answer_accuracy")
+    }
+    out["cost"] = {
+        "generation_usd_per_100": {v: round(c / len(qids) * 100, 4) for v, c in gen_cost.items()},
+        "judge_median_seconds": secs,
+        "judge_minutes_per_100_answerable_all_metrics": round(sum(secs.values()) * 100 / 60, 1),
+        "string_match": "microseconds, $0",
+    }
 
     # threshold sensitivity: does the 0.5 choice drive any conclusion?
     kt_rows = d["known_truth"]
     sens = {}
     for t in (0.5, 0.75, 1.0):
-        kt_right = sum(r["answer_accuracy"]["value"] is not None and (r["answer_accuracy"]["value"] >= t) == r["is_correct"]
-                       for r in kt_rows)
+        kt_right = sum(
+            r["answer_accuracy"]["value"] is not None and (r["answer_accuracy"]["value"] >= t) == r["is_correct"]
+            for r in kt_rows
+        )
         acc_rate = {v: rate([acc[v][q] is not None and acc[v][q] >= t for q in ans]) for v in runs}
         agree = sum(1 for v, q in rows if sm(v, q) == (runs[v][q]["scores"]["answer_accuracy"]["value"] >= t))
-        sens[str(t)] = {"known_truth_judge_right": kt_right, "n_known_truth": len(kt_rows),
-                        "judged_correct_v1": acc_rate["v1"], "judged_correct_v2": acc_rate["v2"],
-                        "agree_with_string_match": agree, "n_real": len(rows)}
+        sens[str(t)] = {
+            "known_truth_judge_right": kt_right,
+            "n_known_truth": len(kt_rows),
+            "judged_correct_v1": acc_rate["v1"],
+            "judged_correct_v2": acc_rate["v2"],
+            "agree_with_string_match": agree,
+            "n_real": len(rows),
+        }
     out["threshold_sensitivity"] = sens
 
     # answer-key noise: known-truth questions whose correct-by-construction answers the judge
@@ -257,16 +334,25 @@ def analyze(d: dict) -> dict:
         if r["is_correct"]:
             by_q.setdefault(r["case_id"].split(":")[0], []).append(r["answer_accuracy"]["value"])
     flagged = sorted(q for q, vals in by_q.items() if any(v is not None and v < 0.75 for v in vals))
-    out["answer_key_noise"] = {"questions": len(by_q), "flagged": len(flagged), "flagged_qids": flagged,
-                               "inspected_bad_or_contradictory_gold": 3,
-                               "rate_ci95": [round(x, 3) for x in wilson_ci(3, len(by_q))]}
+    out["answer_key_noise"] = {
+        "questions": len(by_q),
+        "flagged": len(flagged),
+        "flagged_qids": flagged,
+        "inspected_bad_or_contradictory_gold": 3,
+        "rate_ci95": [round(x, 3) for x in wilson_ci(3, len(by_q))],
+    }
 
     # known-truth summary
     kt = d["known_truth"]
-    out["known_truth"] = {"n": len(kt),
-                          "string_match_right": sum(r["string_match"] == r["is_correct"] for r in kt),
-                          "judge_right": sum(r["answer_accuracy"]["value"] is not None and
-                                             (r["answer_accuracy"]["value"] >= JUDGE_CORRECT_AT) == r["is_correct"] for r in kt)}
+    out["known_truth"] = {
+        "n": len(kt),
+        "string_match_right": sum(r["string_match"] == r["is_correct"] for r in kt),
+        "judge_right": sum(
+            r["answer_accuracy"]["value"] is not None
+            and (r["answer_accuracy"]["value"] >= JUDGE_CORRECT_AT) == r["is_correct"]
+            for r in kt
+        ),
+    }
     return out
 
 
@@ -287,11 +373,15 @@ def report(a: dict) -> str:
     d1 = P1["v2"]["pct"] < P1["v1"]["pct"] and P1["mcnemar_p"] < 0.05
     d2, d3 = P2["v2"]["pct"] > P2["v1"]["pct"], P3["v2"]["pct"] < P3["v1"]["pct"]
     d4 = P4["ci95"][1] < 0
-    p4note = (f" (95% CI [{P4['ci95'][0]:+.3f}, {P4['ci95'][1]:+.3f}] includes 0: not established)"
-              if not d4 else f" (95% CI [{P4['ci95'][0]:+.3f}, {P4['ci95'][1]:+.3f}])")
+    p4note = (
+        f" (95% CI [{P4['ci95'][0]:+.3f}, {P4['ci95'][1]:+.3f}] includes 0: not established)"
+        if not d4
+        else f" (95% CI [{P4['ci95'][0]:+.3f}, {P4['ci95'][1]:+.3f}])"
+    )
 
     def dirn(ok, extra=""):
         return ("yes" if ok else "no") + extra
+
     L = [
         "# Analysis: held-out runs vs the written predictions (decision 0007)",
         "",
@@ -304,9 +394,9 @@ def report(a: dict) -> str:
         "| # | Measure | Predicted | v1 | v2 | Range held? | Direction held? |",
         "|---|---|---|---|---|---|---|",
         f"| P1 | Made-up answers (unanswerable, answered) | v1 15–35%, v2 ≤10%, p<0.05 | {P1['v1']['k']}/{P1['v1']['n']} ({P1['v1']['pct']}%) | "
-        f"{P1['v2']['k']}/{P1['v2']['n']} ({P1['v2']['pct']}%) | {verdict('P1', p1_ok)} | {dirn(d1, f" (exact McNemar p = {P1['mcnemar_p']:.2g})")} |",
+        f"{P1['v2']['k']}/{P1['v2']['n']} ({P1['v2']['pct']}%) | {verdict('P1', p1_ok)} | {dirn(d1, f' (exact McNemar p = {P1["mcnemar_p"]:.2g})')} |",
         f"| P2 | Over-refusal (gold passage retrieved, refused) | v1 ≤5%, v2 5–15% | {P2['v1']['k']}/{P2['v1']['n']} ({P2['v1']['pct']}%) | "
-        f"{P2['v2']['k']}/{P2['v2']['n']} ({P2['v2']['pct']}%) | {verdict('P2', p2_ok)} | {dirn(d2, " (descriptive; few events)")} |",
+        f"{P2['v2']['k']}/{P2['v2']['n']} ({P2['v2']['pct']}%) | {verdict('P2', p2_ok)} | {dirn(d2, ' (descriptive; few events)')} |",
         f"| P3 | Ungrounded answers (gold passage not retrieved, answered) | v1 50–75%, v2 ≤30% | {P3['v1']['k']}/{P3['v1']['n']} ({P3['v1']['pct']}%) | "
         f"{P3['v2']['k']}/{P3['v2']['n']} ({P3['v2']['pct']}%) | {verdict('P3', p3_ok)} | {dirn(d3)} |",
         f"| P4 | Mean answer accuracy, v2 − v1 | −0.10 to −0.03 | {P4['v1_mean']} | {P4['v2_mean']} | {verdict('P4', p4_ok)} (point estimate {P4['diff']:+.3f}) | "
@@ -322,7 +412,7 @@ def report(a: dict) -> str:
         f"(n={a['P4_by_retrieval']['gold_retrieved']['n']}); not retrieved {a['P4_by_retrieval']['gold_not_retrieved']['diff']:+.3f} "
         f"(n={a['P4_by_retrieval']['gold_not_retrieved']['n']}).",
         "",
-        "## Borderline refusals (\"refuses, then adds a related fact\")",
+        '## Borderline refusals ("refuses, then adds a related fact")',
         "",
         f"{bd['n_total']} v1 answers have this shape ({bd['n_unanswerable']} on unanswerable questions). "
         f"Human labels: {bd['human_labels']}. P1 for v1 if the whole group counts as refused: "
@@ -356,9 +446,11 @@ def report(a: dict) -> str:
         "",
         "| Threshold | Known-truth judge right | Judged correct v1 | Judged correct v2 | Agrees with string match (real) |",
         "|---|---|---|---|---|",
-        *[f"| ≥ {t} | {x['known_truth_judge_right']}/{x['n_known_truth']} | {x['judged_correct_v1']['pct']}% | "
-          f"{x['judged_correct_v2']['pct']}% | {x['agree_with_string_match']}/{x['n_real']} |"
-          for t, x in a["threshold_sensitivity"].items()],
+        *[
+            f"| ≥ {t} | {x['known_truth_judge_right']}/{x['n_known_truth']} | {x['judged_correct_v1']['pct']}% | "
+            f"{x['judged_correct_v2']['pct']}% | {x['agree_with_string_match']}/{x['n_real']} |"
+            for t, x in a["threshold_sensitivity"].items()
+        ],
         "",
         "## Answer-key noise",
         "",
@@ -371,12 +463,16 @@ def report(a: dict) -> str:
         "",
         "| | " + " | ".join(a["failure_labels_judge_based"]["v1"]) + " |",
         "|---|" + "---|" * len(a["failure_labels_judge_based"]["v1"]),
-        *[f"| {v} | " + " | ".join(str(x) for x in c.values()) + " |" for v, c in a["failure_labels_judge_based"].items()],
+        *[
+            f"| {v} | " + " | ".join(str(x) for x in c.values()) + " |"
+            for v, c in a["failure_labels_judge_based"].items()
+        ],
         "",
         "## How many questions do you need?",
         "",
         "Half-width of the 95% CI of mean answer accuracy (v1) if only n questions had been scored: "
-        + ", ".join(f"n={n}: ±{w}" for n, w in a["eval_set_size"].items()) + ".",
+        + ", ".join(f"n={n}: ±{w}" for n, w in a["eval_set_size"].items())
+        + ".",
         "",
         "## Cost and time",
         "",

@@ -1,4 +1,5 @@
 """No network: a fake fetch writes known bytes."""
+
 import hashlib
 
 import pytest
@@ -12,6 +13,7 @@ GOOD_SHA = hashlib.sha256(GOOD).hexdigest()
 def fake_fetch(content):
     def fetch(url, dest):
         dest.write_bytes(content)
+
     return fetch
 
 
@@ -27,6 +29,7 @@ def test_existing_verified_file_is_not_downloaded_again(tmp_path):
 
     def must_not_fetch(url, dest):
         raise AssertionError("should not download")
+
     assert ensure_dataset(dest, "u", GOOD_SHA, must_not_fetch) == "present"
 
 

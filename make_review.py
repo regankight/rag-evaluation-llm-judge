@@ -10,6 +10,7 @@ Part B: a seeded random sample of answers to review in depth. The reviewer judge
 answer from the question and retrieved passages first; only then is the gold answer
 revealed, and the gold itself gets a quality label.
 """
+
 from __future__ import annotations
 
 import json
@@ -17,6 +18,7 @@ import random
 from pathlib import Path
 
 from runs import HELD_OUT as RUNS
+
 SEED = 20261006
 N_ANSWERABLE_PER_PROMPT = 25
 N_UNANSWERABLE_PER_PROMPT = 8
@@ -38,7 +40,7 @@ def draw_part_b(answers: dict[str, dict[str, dict]], seed: int = SEED) -> list[d
         qids = sorted(q for q, r in v1.items() if r["label"] == label)
         rng.shuffle(qids)
         for i, prompt in enumerate(answers):
-            items += [{"qid": q, "prompt": prompt} for q in qids[i * n:(i + 1) * n]]
+            items += [{"qid": q, "prompt": prompt} for q in qids[i * n : (i + 1) * n]]
     rng.shuffle(items)
     return items
 
@@ -53,33 +55,57 @@ def main() -> None:
 
     part_a = sorted(answers["v1-baseline"].values(), key=lambda r: r["qid"])
     rng.shuffle(part_a)
-    a_items = [{"id": item_id("A", i), "qid": r["qid"], "question": r["question"], "answer": r["answer"]}
-               for i, r in enumerate(part_a)]
+    a_items = [
+        {"id": item_id("A", i), "qid": r["qid"], "question": r["question"], "answer": r["answer"]}
+        for i, r in enumerate(part_a)
+    ]
 
     b_items = []
     for i, pick in enumerate(draw_part_b(answers)):
         r = answers[pick["prompt"]][pick["qid"]]
-        b_items.append({
-            "id": item_id("B", i), "qid": r["qid"], "prompt": pick["prompt"], "question": r["question"],
-            "passages": [{"rank": p["rank"], "title": p["title"], "text": p["text"]} for p in r["retrieved"]],
-            "answer": r["answer"],
-            # Revealed only after the reviewer locks a verdict. Unanswerable questions have none.
-            "gold": r["gold_answers"], "label": r["label"]})
+        b_items.append(
+            {
+                "id": item_id("B", i),
+                "qid": r["qid"],
+                "prompt": pick["prompt"],
+                "question": r["question"],
+                "passages": [{"rank": p["rank"], "title": p["title"], "text": p["text"]} for p in r["retrieved"]],
+                "answer": r["answer"],
+                # Revealed only after the reviewer locks a verdict. Unanswerable questions have none.
+                "gold": r["gold_answers"],
+                "label": r["label"],
+            }
+        )
 
     OUT.mkdir(exist_ok=True)
     # The key that maps opaque item ids back to questions and prompts; not shown in the page.
-    (OUT / "sample.json").write_text(json.dumps({
-        "seed": SEED, "runs": RUNS,
-        "part_a": [{"id": x["id"], "qid": x["qid"]} for x in a_items],
-        "part_b": [{"id": x["id"], "qid": x["qid"], "prompt": x["prompt"], "label": x["label"]} for x in b_items],
-    }, indent=1) + "\n")
+    (OUT / "sample.json").write_text(
+        json.dumps(
+            {
+                "seed": SEED,
+                "runs": RUNS,
+                "part_a": [{"id": x["id"], "qid": x["qid"]} for x in a_items],
+                "part_b": [
+                    {"id": x["id"], "qid": x["qid"], "prompt": x["prompt"], "label": x["label"]} for x in b_items
+                ],
+            },
+            indent=1,
+        )
+        + "\n"
+    )
     # The page itself doesn't need qid/prompt; dropping them keeps the review blind to the prompt
     # version (although v2's NOT_IN_CONTEXT marker is visible in the answer text by design).
     page_a = [{k: x[k] for k in ("id", "question", "answer")} for x in a_items]
     page_b = [{k: x[k] for k in ("id", "question", "passages", "answer", "gold", "label")} for x in b_items]
     template = Path("review_template.html").read_text()
-    html = template.replace("/*DATA*/", "const PART_A = " + json.dumps(page_a, ensure_ascii=False)
-                            + ";\nconst PART_B = " + json.dumps(page_b, ensure_ascii=False) + ";")
+    html = template.replace(
+        "/*DATA*/",
+        "const PART_A = "
+        + json.dumps(page_a, ensure_ascii=False)
+        + ";\nconst PART_B = "
+        + json.dumps(page_b, ensure_ascii=False)
+        + ";",
+    )
     (OUT / "review.html").write_text(html)
     print(f"Part A: {len(a_items)} items, Part B: {len(b_items)} items -> {OUT / 'review.html'}")
 

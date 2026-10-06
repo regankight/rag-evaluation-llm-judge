@@ -1,4 +1,5 @@
 """No network: a fake HTTP transport stands in for OpenAI and records the request body."""
+
 import json
 
 import httpx
@@ -13,11 +14,19 @@ SEEN = []
 
 def fake_openai(request: httpx.Request) -> httpx.Response:
     SEEN.append(json.loads(request.content))
-    return httpx.Response(200, json={
-        "id": "x", "object": "chat.completion", "created": 0, "model": "gpt-6-luna",
-        "choices": [{"index": 0, "finish_reason": "stop",
-                     "message": {"role": "assistant", "content": "  Tokyo. "}}],
-        "usage": {"prompt_tokens": 1000, "completion_tokens": 10, "total_tokens": 1010}})
+    return httpx.Response(
+        200,
+        json={
+            "id": "x",
+            "object": "chat.completion",
+            "created": 0,
+            "model": "gpt-6-luna",
+            "choices": [
+                {"index": 0, "finish_reason": "stop", "message": {"role": "assistant", "content": "  Tokyo. "}}
+            ],
+            "usage": {"prompt_tokens": 1000, "completion_tokens": 10, "total_tokens": 1010},
+        },
+    )
 
 
 @pytest.fixture
@@ -81,4 +90,5 @@ def test_unknown_prompt_version_fails_before_any_call(monkeypatch):
 
 def test_prompt_versions_have_distinct_hashes():
     from generation import PROMPTS, prompt_sha256
+
     assert len({prompt_sha256(v) for v in PROMPTS}) == len(PROMPTS)

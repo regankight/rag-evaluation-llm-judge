@@ -4,6 +4,7 @@ Every call records the settings that were actually SENT in the HTTP request body
 the ones we intended to send. In the take-home this repo grew from, temperature=0 was
 silently dropped by a wrong payload shape and every run used the default temperature.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -27,9 +28,11 @@ PROMPTS = {
     "v1-baseline": "You answer questions using the provided context passages.",
     # Wording revised once on dev for format compliance only (record 0007 addendum): the first
     # version produced free-text refusals ("The passages don't say...") instead of the marker.
-    "v2-not-in-context": ("Answer using only the provided context passages. If the passages do not "
-                          f"contain the answer, reply with exactly {REFUSAL_MARKER} and nothing else. "
-                          "Do not explain what the passages are missing."),
+    "v2-not-in-context": (
+        "Answer using only the provided context passages. If the passages do not "
+        f"contain the answer, reply with exactly {REFUSAL_MARKER} and nothing else. "
+        "Do not explain what the passages are missing."
+    ),
 }
 DEFAULT_PROMPT = "v1-baseline"
 NO_CONTEXT = "(no passages were retrieved)"
@@ -62,8 +65,13 @@ class Generation:
 
 
 class Generator:
-    def __init__(self, model: str, prompt_version: str = DEFAULT_PROMPT, client: OpenAI | None = None,
-                 transport: httpx.BaseTransport | None = None):
+    def __init__(
+        self,
+        model: str,
+        prompt_version: str = DEFAULT_PROMPT,
+        client: OpenAI | None = None,
+        transport: httpx.BaseTransport | None = None,
+    ):
         self.model = model
         self.prompt_version = prompt_version
         self.system_prompt = PROMPTS[prompt_version]  # unknown version fails here, before any call
@@ -76,15 +84,20 @@ class Generator:
         self._last_sent = {k: v for k, v in body.items() if k != "messages"}
 
     def answer(self, question: str, hits: list[Hit]) -> Generation:
-        messages = [{"role": "system", "content": self.system_prompt},
-                    {"role": "user", "content": USER_TEMPLATE.format(
-                        context=format_context(hits), question=question)}]
+        messages = [
+            {"role": "system", "content": self.system_prompt},
+            {"role": "user", "content": USER_TEMPLATE.format(context=format_context(hits), question=question)},
+        ]
         start = time.perf_counter()
         r = self.client.chat.completions.create(model=self.model, messages=messages, **SETTINGS)
         latency = time.perf_counter() - start
         u = r.usage
         return Generation(
-            answer=(r.choices[0].message.content or "").strip(), returned_model=r.model,
-            prompt_tokens=u.prompt_tokens, completion_tokens=u.completion_tokens,
+            answer=(r.choices[0].message.content or "").strip(),
+            returned_model=r.model,
+            prompt_tokens=u.prompt_tokens,
+            completion_tokens=u.completion_tokens,
             cost_usd=cost_usd(self.model, u.prompt_tokens, u.completion_tokens),
-            latency_s=round(latency, 3), sent_settings=dict(self._last_sent))
+            latency_s=round(latency, 3),
+            sent_settings=dict(self._last_sent),
+        )

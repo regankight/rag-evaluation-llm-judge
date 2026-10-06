@@ -1,6 +1,7 @@
 """BM25 search over TyDi passages. Deliberately simple: retrieval is the thing being
 evaluated here, not the thing being optimized (retrieval comparisons live in
 es-hybrid-retrieval-benchmark)."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -31,7 +32,7 @@ class BM25Index:
         tokens = self.tokenizer.tokenize([query], update_vocab=False, show_progress=False)
         ids, scores = self.bm25.retrieve(tokens, k=min(k, len(self.passages)), show_progress=False)
         hits = []
-        for i, s in zip(ids[0], scores[0]):
+        for i, s in zip(ids[0], scores[0], strict=True):
             # bm25s still returns k "results" when nothing matches, all with score 0.
             # Those are arbitrary passages, not context, so they are dropped.
             if s > 0:

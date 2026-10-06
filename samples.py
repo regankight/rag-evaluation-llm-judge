@@ -4,6 +4,7 @@ dev:      used for building and tuning (prompts, thresholds).
 held_out: untouched until the final runs, so tuning can't leak into reported numbers.
 Run `python samples.py` once; the output file is committed.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -14,16 +15,14 @@ from pathlib import Path
 from tydiqa import ANSWERABLE, UNANSWERABLE, Question
 
 SEED = 20261005
-SIZES = {"dev": {ANSWERABLE: 20, UNANSWERABLE: 10},
-         "held_out": {ANSWERABLE: 100, UNANSWERABLE: 50}}
+SIZES = {"dev": {ANSWERABLE: 20, UNANSWERABLE: 10}, "held_out": {ANSWERABLE: 100, UNANSWERABLE: 50}}
 SAMPLES_PATH = Path("samples/samples.json")
 DATASET_PATH = "data/raw/tydiqa-primary-validation.parquet"
 
 
 def draw(questions: list[Question], seed: int = SEED, sizes: dict = SIZES) -> dict[str, list[str]]:
     rng = random.Random(seed)
-    pools = {label: sorted(q.qid for q in questions if q.label == label)
-             for label in (ANSWERABLE, UNANSWERABLE)}
+    pools = {label: sorted(q.qid for q in questions if q.label == label) for label in (ANSWERABLE, UNANSWERABLE)}
     for pool in pools.values():
         rng.shuffle(pool)
     out: dict[str, list[str]] = {}
@@ -58,7 +57,17 @@ if __name__ == "__main__":
     _, questions = load(read_parquet_rows(DATASET_PATH))
     splits = draw(questions)
     SAMPLES_PATH.parent.mkdir(exist_ok=True)
-    SAMPLES_PATH.write_text(json.dumps({
-        "seed": SEED, "sizes": SIZES, "dataset_sha256": file_sha256(DATASET_PATH),
-        "language": "english", "splits": splits}, indent=1) + "\n")
+    SAMPLES_PATH.write_text(
+        json.dumps(
+            {
+                "seed": SEED,
+                "sizes": SIZES,
+                "dataset_sha256": file_sha256(DATASET_PATH),
+                "language": "english",
+                "splits": splits,
+            },
+            indent=1,
+        )
+        + "\n"
+    )
     print({k: len(v) for k, v in splits.items()}, "->", SAMPLES_PATH)

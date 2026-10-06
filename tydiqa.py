@@ -9,11 +9,12 @@ Labeling rules (docs/decisions/0003):
 TyDi offsets are UTF-8 BYTE offsets. Slicing the Python str with them silently returns
 the wrong text whenever the document contains non-ASCII characters.
 """
+
 from __future__ import annotations
 
 import hashlib
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
-from typing import Iterable, Mapping
 
 ANSWERABLE = "answerable"
 UNANSWERABLE = "unanswerable"
@@ -53,12 +54,19 @@ def doc_passages(row: Mapping) -> list[Passage]:
     doc_id = short_hash(row["document_url"])
     cands = row["passage_answer_candidates"]
     out = []
-    for i, (s, e) in enumerate(zip(cands["plaintext_start_byte"], cands["plaintext_end_byte"])):
-        out.append(Passage(
-            passage_id=f"{doc_id}:{i}", doc_id=doc_id, title=row["document_title"],
-            url=row["document_url"], passage_index=i, start_byte=int(s), end_byte=int(e),
-            text=slice_bytes(row["document_plaintext"], int(s), int(e)).strip(),
-        ))
+    for i, (s, e) in enumerate(zip(cands["plaintext_start_byte"], cands["plaintext_end_byte"], strict=True)):
+        out.append(
+            Passage(
+                passage_id=f"{doc_id}:{i}",
+                doc_id=doc_id,
+                title=row["document_title"],
+                url=row["document_url"],
+                passage_index=i,
+                start_byte=int(s),
+                end_byte=int(e),
+                text=slice_bytes(row["document_plaintext"], int(s), int(e)).strip(),
+            )
+        )
     return out
 
 
@@ -82,15 +90,16 @@ def label_question(row: Mapping) -> Question | None:
     # with a different annotator's passage produced "correct" answers missing from the
     # context in the Phase 0 judge spike (docs/decisions/0002).
     spans = []
-    for k, s, e in zip(chosen, starts, ends):
+    for k, s, e in zip(chosen, starts, ends, strict=True):
         if k == top and s >= 0:
             span = slice_bytes(row["document_plaintext"], s, e).strip()
             if span and span not in spans:
                 spans.append(span)
     if not spans:
         return None  # yes/no-only or passage-only answers
-    return Question(qid, row["question_text"], ANSWERABLE, doc_id,
-                    gold_passage_id=f"{doc_id}:{top}", gold_answers=tuple(spans))
+    return Question(
+        qid, row["question_text"], ANSWERABLE, doc_id, gold_passage_id=f"{doc_id}:{top}", gold_answers=tuple(spans)
+    )
 
 
 def load(rows: Iterable[Mapping]) -> tuple[list[Passage], list[Question]]:

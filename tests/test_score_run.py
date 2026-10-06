@@ -55,8 +55,13 @@ def test_row_missing_a_newly_added_metric_is_pending_again():
 
 
 def answer(label, text, gold, contexts, gold_retrieved=False):
-    return {"label": label, "answer": text, "gold_answers": gold, "gold_retrieved": gold_retrieved,
-            "retrieved": [{"text": t} for t in contexts]}
+    return {
+        "label": label,
+        "answer": text,
+        "gold_answers": gold,
+        "gold_retrieved": gold_retrieved,
+        "retrieved": [{"text": t} for t in contexts],
+    }
 
 
 def test_deterministic_scores_generation_error():
@@ -73,8 +78,11 @@ def test_deterministic_scores_unanswerable_has_no_correctness():
 
 def test_truncation_warnings_are_counted():
     from score_run import count_truncations
-    log = ('time=1 level=WARN msg="truncating input prompt" limit=4098 prompt=8910 keep=4 new=4098\n'
-           "slot release: n_tokens = 2052, truncated = 0\n"
-           'time=2 level=WARN msg="truncating input prompt" limit=2050 prompt=28910\n')
+
+    log = (
+        'time=1 level=WARN msg="truncating input prompt" limit=4098 prompt=8910 keep=4 new=4098\n'
+        "slot release: n_tokens = 2052, truncated = 0\n"
+        'time=2 level=WARN msg="truncating input prompt" limit=2050 prompt=28910\n'
+    )
     assert count_truncations(log) == 2
     assert count_truncations("") == 0

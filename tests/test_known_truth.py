@@ -3,8 +3,10 @@ import pytest
 from known_truth import VARIANTS, build_cases, summarize, unrelated
 from scorers import string_match
 
-QS = [{"qid": f"q{i}", "question": f"Question {i}?", "gold_answers": [g]}
-      for i, g in enumerate(["Paris", "1939", "Mark Rutte", "the radius and the ulna"])]
+QS = [
+    {"qid": f"q{i}", "question": f"Question {i}?", "gold_answers": [g]}
+    for i, g in enumerate(["Paris", "1939", "Mark Rutte", "the radius and the ulna"])
+]
 
 
 def test_every_question_gets_every_variant_with_a_fixed_label():
@@ -32,14 +34,20 @@ def test_build_is_deterministic():
 
 def test_unrelated():
     assert unrelated("Paris", "1939")
-    assert not unrelated("Paris", "Paris, France")   # one contains the other
+    assert not unrelated("Paris", "Paris, France")  # one contains the other
     assert not unrelated("", "Paris")
 
 
 def test_no_unrelated_answer_fails_loudly():
     with pytest.raises(ValueError):
-        build_cases([{"qid": "a", "question": "q", "gold_answers": ["x"]},
-                     {"qid": "b", "question": "q", "gold_answers": ["x"]}], seed=1, n=2)
+        build_cases(
+            [
+                {"qid": "a", "question": "q", "gold_answers": ["x"]},
+                {"qid": "b", "question": "q", "gold_answers": ["x"]},
+            ],
+            seed=1,
+            n=2,
+        )
 
 
 def test_summarize_counts_right_labels_and_failures_hand_checked():
@@ -50,5 +58,10 @@ def test_summarize_counts_right_labels_and_failures_hand_checked():
         {"variant": "swapped", "is_correct": False, "string_match": False, "answer_accuracy": {"value": 0.5}},
     ]
     s = summarize(rows)
-    assert (s["exact"]["n"], s["exact"]["string_match_right"], s["exact"]["judge_right"], s["exact"]["judge_failed"]) == (3, 2, 1, 1)
+    assert (
+        s["exact"]["n"],
+        s["exact"]["string_match_right"],
+        s["exact"]["judge_right"],
+        s["exact"]["judge_failed"],
+    ) == (3, 2, 1, 1)
     assert s["swapped"]["judge_right"] == 0  # 0.5 counts as "judged correct", which is wrong here

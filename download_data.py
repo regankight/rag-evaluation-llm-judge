@@ -6,16 +6,19 @@ Writes to a .part file first and only moves it into place after the SHA-256 matc
 interrupted or corrupted download can never be mistaken for the real file. The samples in
 samples/samples.json were drawn from exactly this file (same checksum).
 """
+
 from __future__ import annotations
 
 import hashlib
 import sys
 import urllib.request
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable
 
-URL = ("https://huggingface.co/datasets/google-research-datasets/tydiqa/resolve/main/"
-       "primary_task/validation-00000-of-00001.parquet")
+URL = (
+    "https://huggingface.co/datasets/google-research-datasets/tydiqa/resolve/main/"
+    "primary_task/validation-00000-of-00001.parquet"
+)
 SHA256 = "2e9557a6ea4bfd65f381c64b91122c90554e4b00f86e15a8b4f1353be1c81510"
 SIZE = 232_035_124
 DEST = Path("data/raw/tydiqa-primary-validation.parquet")
@@ -33,8 +36,9 @@ def urllib_fetch(url: str, dest: Path) -> None:
     urllib.request.urlretrieve(url, dest)
 
 
-def ensure_dataset(dest: Path = DEST, url: str = URL, expected: str = SHA256,
-                   fetch: Callable[[str, Path], None] = urllib_fetch) -> str:
+def ensure_dataset(
+    dest: Path = DEST, url: str = URL, expected: str = SHA256, fetch: Callable[[str, Path], None] = urllib_fetch
+) -> str:
     """Return 'present' if a verified file already exists, else download and verify it."""
     if dest.exists():
         if sha256(dest) == expected:

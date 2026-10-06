@@ -8,6 +8,7 @@ get them wrong. The same idea as unit-testing code: inputs with known expected o
     uv run python known_truth.py score [--max-minutes 8]   # resumable
     uv run python known_truth.py report
 """
+
 from __future__ import annotations
 
 import argparse
@@ -29,12 +30,12 @@ SCORES = Path("known_truth/scores-{judge}.jsonl")
 
 # variant -> (template, is_correct). {gold} is this question's answer, {other} another question's.
 VARIANTS = {
-    "exact":           ("{gold}", True),
-    "sentence":        ("The answer is {gold}.", True),
-    "reworded":        ("Based on the passages, it is {gold}.", True),
-    "swapped":         ("The answer is {other}.", False),
-    "negation_trap":   ("It is not {gold}; the answer is {other}.", False),  # contains the gold words
-    "refusal":         ("NOT_IN_CONTEXT", False),
+    "exact": ("{gold}", True),
+    "sentence": ("The answer is {gold}.", True),
+    "reworded": ("Based on the passages, it is {gold}.", True),
+    "swapped": ("The answer is {other}.", False),
+    "negation_trap": ("It is not {gold}; the answer is {other}.", False),  # contains the gold words
+    "refusal": ("NOT_IN_CONTEXT", False),
 }
 
 
@@ -54,13 +55,21 @@ def build_cases(questions: list[dict], seed: int = SEED, n: int = N_QUESTIONS) -
     for i, q in enumerate(chosen):
         gold = q["gold_answers"][0]
         # deterministic "other" answer: the next chosen question whose answer is unrelated
-        others = [c["gold_answers"][0] for c in chosen[i + 1:] + chosen[:i] if unrelated(gold, c["gold_answers"][0])]
+        others = [c["gold_answers"][0] for c in chosen[i + 1 :] + chosen[:i] if unrelated(gold, c["gold_answers"][0])]
         if not others:
             raise ValueError(f"no unrelated answer available for {q['qid']}")
         for name, (template, is_correct) in VARIANTS.items():
-            cases.append({"case_id": f"{q['qid']}:{name}", "qid": q["qid"], "variant": name,
-                          "question": q["question"], "gold_answers": q["gold_answers"],
-                          "response": template.format(gold=gold, other=others[0]), "is_correct": is_correct})
+            cases.append(
+                {
+                    "case_id": f"{q['qid']}:{name}",
+                    "qid": q["qid"],
+                    "variant": name,
+                    "question": q["question"],
+                    "gold_answers": q["gold_answers"],
+                    "response": template.format(gold=gold, other=others[0]),
+                    "is_correct": is_correct,
+                }
+            )
     return cases
 
 
@@ -70,6 +79,7 @@ def load_jsonl(path: Path) -> list[dict]:
 
 def cmd_build() -> None:
     from samples import load_samples
+
     run = Path(HELD_OUT["v1-baseline"], "answers.jsonl")
     held_out = set(load_samples()["splits"]["held_out"])
     qs = [r for r in load_jsonl(run) if r["label"] == "answerable" and r["qid"] in held_out]
@@ -90,8 +100,9 @@ async def cmd_score(max_minutes: float) -> None:
 
     load_dotenv(".env")
     judge = os.environ["JUDGE_MODEL"]
-    client = AsyncOpenAI(base_url=os.environ["OLLAMA_BASE_URL"], api_key="ollama",
-                         http_client=httpx.AsyncClient(timeout=600))
+    client = AsyncOpenAI(
+        base_url=os.environ["OLLAMA_BASE_URL"], api_key="ollama", http_client=httpx.AsyncClient(timeout=600)
+    )
     metric = AnswerAccuracy(llm=llm_factory(judge, client=client, **JUDGE_SETTINGS))
     out = Path(str(SCORES).format(judge=judge.replace(":", "_")))
     done = {r["case_id"] for r in load_jsonl(out)}
@@ -102,10 +113,19 @@ async def cmd_score(max_minutes: float) -> None:
         if time.monotonic() > deadline:
             print(f"time budget reached; rerun to continue ({len(todo) - i + 1} left)")
             break
-        r = await run_metric(metric.ascore, user_input=c["question"], response=c["response"],
-                             reference=reference_answer(c["gold_answers"]))
-        row = {"case_id": c["case_id"], "variant": c["variant"], "is_correct": c["is_correct"],
-               "string_match": string_match(c["response"], c["gold_answers"]), "answer_accuracy": r}
+        r = await run_metric(
+            metric.ascore,
+            user_input=c["question"],
+            response=c["response"],
+            reference=reference_answer(c["gold_answers"]),
+        )
+        row = {
+            "case_id": c["case_id"],
+            "variant": c["variant"],
+            "is_correct": c["is_correct"],
+            "string_match": string_match(c["response"], c["gold_answers"]),
+            "answer_accuracy": r,
+        }
         with open(out, "a") as f:
             f.write(json.dumps(row) + "\n")
     truncated = count_truncations(read_log()) - before
@@ -114,7 +134,9 @@ async def cmd_score(max_minutes: float) -> None:
 
 def summarize(rows: list[dict]) -> dict:
     """Per variant: how often each scorer gives the right label, plus judge status counts."""
-    out = defaultdict(lambda: {"n": 0, "string_match_right": 0, "judge_right": 0, "judge_failed": 0, "judge_values": []})
+    out = defaultdict(
+        lambda: {"n": 0, "string_match_right": 0, "judge_right": 0, "judge_failed": 0, "judge_values": []}
+    )
     for r in rows:
         s = out[r["variant"]]
         s["n"] += 1
@@ -137,8 +159,10 @@ def cmd_report() -> None:
         if not s:
             continue
         dist = {v: s["judge_values"].count(v) for v in sorted(set(s["judge_values"]))}
-        print(f"{name:15} {'correct' if correct else 'wrong':8} {s['n']:>3} {s['string_match_right']:>8}/{s['n']:<4}"
-              f" {s['judge_right']:>4}/{s['n']:<3} {s['judge_failed']:>7}  {dist}")
+        print(
+            f"{name:15} {'correct' if correct else 'wrong':8} {s['n']:>3} {s['string_match_right']:>8}/{s['n']:<4}"
+            f" {s['judge_right']:>4}/{s['n']:<3} {s['judge_failed']:>7}  {dist}"
+        )
 
 
 if __name__ == "__main__":

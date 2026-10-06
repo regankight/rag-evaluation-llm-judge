@@ -4,6 +4,7 @@ String matching is the lightweight custom metric: cheap, instant, reproducible. 
 weakness (paraphrase, extra detail, wrong-but-containing answers) is exactly what the
 LLM judge and the human review are compared against.
 """
+
 from __future__ import annotations
 
 import re
@@ -11,8 +12,8 @@ import string
 import unicodedata
 
 CORRECT = "correct"
-RETRIEVAL_MISS = "retrieval_miss"          # answer not in context, and response wrong
-GENERATION_ERROR = "generation_error"      # answer was in context, response still wrong
+RETRIEVAL_MISS = "retrieval_miss"  # answer not in context, and response wrong
+GENERATION_ERROR = "generation_error"  # answer was in context, response still wrong
 CORRECT_WITHOUT_CONTEXT = "correct_without_context"  # right, but not from the context (memory)
 UNANSWERABLE = "unanswerable"
 REFUSED, ANSWERED = "refused", "answered"
@@ -75,7 +76,9 @@ def reference_answer(gold_answers: list[str]) -> str:
 _V1_REFUSAL = re.compile(
     r"\b(context|passages?)\b[^.]{0,40}?\b(does not|doesn't|doesn\u2019t|do not|don't|don\u2019t|"
     r"is not|isn't|isn\u2019t)\b[^.]{0,20}?\b(specify|say|mention|give|describe|contain|confirm|state|"
-    r"provide|include)", re.IGNORECASE)
+    r"provide|include)",
+    re.IGNORECASE,
+)
 
 
 def classify_response(answer: str, prompt_version: str) -> dict:

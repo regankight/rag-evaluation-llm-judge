@@ -34,17 +34,21 @@ def test_smaller_samples_give_wider_intervals():
     assert ci_halfwidth_at(values, 10, b=1000) > ci_halfwidth_at(values, 100, b=1000)
 
 
-@pytest.mark.parametrize("answer,expected", [
-    ("The context doesn’t say how much student athletes earn. It notes that only 2% receive scholarships.", True),
-    ("The context does not specify Georgia’s state flower.", False),       # plain refusal
-    ("G.I. Joe debuted in 1964, so it was 62 years old in 2026.", False),  # plain answer
-])
+@pytest.mark.parametrize(
+    "answer,expected",
+    [
+        ("The context doesn’t say how much student athletes earn. It notes that only 2% receive scholarships.", True),
+        ("The context does not specify Georgia’s state flower.", False),  # plain refusal
+        ("G.I. Joe debuted in 1964, so it was 62 years old in 2026.", False),  # plain answer
+    ],
+)
 def test_refuses_plus_extra(answer, expected):
     assert refuses_plus_extra(answer) is expected
 
 
 def test_wilson_hand_checked():
     from analyze import wilson_ci
+
     lo, hi = wilson_ci(3, 60)
     assert lo == pytest.approx(0.0171, abs=1e-3) and hi == pytest.approx(0.1369, abs=1e-3)
     assert wilson_ci(0, 10)[0] == 0.0 and wilson_ci(10, 10)[1] == 1.0

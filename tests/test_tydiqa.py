@@ -18,13 +18,21 @@ def row(chosen, spans, question="What is the capital?"):
     starts = [s[0] if s else -1 for s in spans]
     ends = [s[1] if s else -1 for s in spans]
     return {
-        "language": "english", "question_text": question, "document_title": "Japan",
-        "document_url": "https://en.wikipedia.org/wiki/Japan", "document_plaintext": DOC,
-        "passage_answer_candidates": {"plaintext_start_byte": [P0[0], P1[0], P2[0]],
-                                      "plaintext_end_byte": [P0[1], P1[1], P2[1]]},
-        "annotations": {"passage_answer_candidate_index": chosen,
-                        "minimal_answers_start_byte": starts, "minimal_answers_end_byte": ends,
-                        "yes_no_answer": ["NONE"] * 3},
+        "language": "english",
+        "question_text": question,
+        "document_title": "Japan",
+        "document_url": "https://en.wikipedia.org/wiki/Japan",
+        "document_plaintext": DOC,
+        "passage_answer_candidates": {
+            "plaintext_start_byte": [P0[0], P1[0], P2[0]],
+            "plaintext_end_byte": [P0[1], P1[1], P2[1]],
+        },
+        "annotations": {
+            "passage_answer_candidate_index": chosen,
+            "minimal_answers_start_byte": starts,
+            "minimal_answers_end_byte": ends,
+            "yes_no_answer": ["NONE"] * 3,
+        },
     }
 
 
@@ -68,8 +76,7 @@ def test_ids_are_stable_and_distinct_per_question():
 
 
 def test_load_dedupes_shared_documents_and_keeps_provenance():
-    passages, questions = load([row([1, 1, -1], [SPAN, SPAN, None], "Q1"),
-                                row([-1, -1, -1], [None] * 3, "Q2")])
+    passages, questions = load([row([1, 1, -1], [SPAN, SPAN, None], "Q1"), row([-1, -1, -1], [None] * 3, "Q2")])
     assert len(passages) == 3 and len(questions) == 2
     p = next(p for p in passages if p.passage_index == 1)
     assert p.text == "The capital is 東京 since 1868."
