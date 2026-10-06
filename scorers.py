@@ -14,7 +14,9 @@ CORRECT = "correct"
 RETRIEVAL_MISS = "retrieval_miss"          # answer not in context, and response wrong
 GENERATION_ERROR = "generation_error"      # answer was in context, response still wrong
 CORRECT_WITHOUT_CONTEXT = "correct_without_context"  # right, but not from the context (memory)
-UNANSWERABLE = "unanswerable"              # labeled in Phase 3, once refusals are detectable
+UNANSWERABLE = "unanswerable"
+REFUSED, ANSWERED = "refused", "answered"
+REFUSAL_MARKER = "NOT_IN_CONTEXT"
 
 
 def normalize(text: str) -> str:
@@ -66,3 +68,27 @@ def reference_answer(gold_answers: list[str]) -> str:
     """Short reference for AnswerAccuracy, which is designed for short answers."""
     first, rest = gold_answers[0], gold_answers[1:]
     return f"{first} (also accepted: {'; '.join(rest)})" if rest else first
+
+
+# First-pass pattern for v1's free-text refusals. Every v1 classification used in results is
+# checked by hand (decision record 0007), so this only needs to be a good first pass.
+_V1_REFUSAL = re.compile(
+    r"\b(context|passages?)\b[^.]{0,40}?\b(does not|doesn't|doesn\u2019t|do not|don't|don\u2019t|"
+    r"is not|isn't|isn\u2019t)\b[^.]{0,20}?\b(specify|say|mention|give|describe|contain|confirm|state|"
+    r"provide|include)", re.IGNORECASE)
+
+
+def classify_response(answer: str, prompt_version: str) -> dict:
+    """REFUSED or ANSWERED, plus how it was decided. v2 uses the exact marker; a response
+    that contains the marker but adds other text is flagged, since v2 asks for the marker
+    alone (a format-compliance problem, decision record 0007)."""
+    text = answer.strip()
+    if prompt_version == "v2-not-in-context":
+        if text == REFUSAL_MARKER:
+            return {"refusal": REFUSED, "method": "marker"}
+        if text.startswith(REFUSAL_MARKER):
+            return {"refusal": REFUSED, "method": "marker_with_extra_text"}
+        if REFUSAL_MARKER in text:
+            return {"refusal": ANSWERED, "method": "marker_not_at_start"}
+        return {"refusal": ANSWERED, "method": "marker"}
+    return {"refusal": REFUSED if _V1_REFUSAL.search(text) else ANSWERED, "method": "v1_pattern_needs_review"}

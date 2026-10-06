@@ -63,3 +63,22 @@ def test_cost_hand_calculated():
 def test_unknown_model_price_fails_loudly():
     with pytest.raises(KeyError):
         cost_usd("some-other-model", 1, 1)
+
+
+def test_v2_prompt_is_selected_and_carries_the_marker(monkeypatch):
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    SEEN.clear()
+    g = Generator("gpt-6-luna", prompt_version="v2-not-in-context", transport=httpx.MockTransport(fake_openai))
+    g.answer("q", [HIT])
+    assert "reply with exactly NOT_IN_CONTEXT and nothing else" in SEEN[-1]["messages"][0]["content"]
+
+
+def test_unknown_prompt_version_fails_before_any_call(monkeypatch):
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    with pytest.raises(KeyError):
+        Generator("gpt-6-luna", prompt_version="v9-typo")
+
+
+def test_prompt_versions_have_distinct_hashes():
+    from generation import PROMPTS, prompt_sha256
+    assert len({prompt_sha256(v) for v in PROMPTS}) == len(PROMPTS)

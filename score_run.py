@@ -22,7 +22,8 @@ import httpx
 from dotenv import load_dotenv
 from openai import AsyncOpenAI
 
-from scorers import answer_in_context, failure_label, reference_answer, reference_sentence, string_match
+from scorers import (answer_in_context, classify_response, failure_label, reference_answer, reference_sentence,
+                     string_match)
 
 # RAGAS adds top_p/max_tokens on its own (seen in the Phase 0 spike); these are ours.
 JUDGE_SETTINGS = {"temperature": 0, "reasoning_effort": "none"}
@@ -68,7 +69,9 @@ def deterministic_scores(a: dict) -> dict:
     return {"string_match": correct if answerable else None,
             "answer_in_context": in_ctx if answerable else None,
             "gold_passage_retrieved": a["gold_retrieved"] if answerable else None,
-            "failure_label_string_match": failure_label(answerable, in_ctx, correct)}
+            "failure_label_string_match": failure_label(answerable, in_ctx, correct),
+            # Answer records made before prompt versions existed are v1 (record 0007).
+            **classify_response(a["answer"], a.get("prompt_version", "v1-baseline"))}
 
 
 def load_jsonl(path: Path) -> list[dict]:

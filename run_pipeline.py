@@ -46,6 +46,7 @@ def record(q, hits, g) -> dict:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--split", choices=["dev", "held_out"], required=True)
+    ap.add_argument("--prompt", choices=sorted(generation.PROMPTS), default=generation.DEFAULT_PROMPT)
     ap.add_argument("--limit", type=int, help="answer only the first N questions (smoke tests)")
     args = ap.parse_args()
 
@@ -61,9 +62,9 @@ def main() -> None:
     chosen = [by_id[qid] for qid in wanted][: args.limit]
 
     index = BM25Index(passages)
-    gen = Generator(model)
+    gen = Generator(model, prompt_version=args.prompt)
     started = datetime.now(timezone.utc)
-    run_id = f"{args.split}-{generation.PROMPT_VERSION}-{started:%Y%m%dT%H%M%SZ}"
+    run_id = f"{args.split}-{args.prompt}-{started:%Y%m%dT%H%M%SZ}"
     out = Path("results") / run_id
     out.mkdir(parents=True)
 
@@ -71,7 +72,7 @@ def main() -> None:
     with open(out / "answers.jsonl", "w") as f:
         for i, q in enumerate(chosen, 1):
             hits = index.search(q.question, k=TOP_K)
-            row = record(q, hits, gen.answer(q.question, hits))
+            row = {**record(q, hits, gen.answer(q.question, hits)), "prompt_version": args.prompt}
             f.write(json.dumps(row, ensure_ascii=False) + "\n")
             rows.append(row)
             print(f"[{i}/{len(chosen)}] {q.label:12} gold_retrieved={row['gold_retrieved']!s:5} {row['answer'][:60]!r}")
@@ -86,7 +87,8 @@ def main() -> None:
         "generator": {"requested_model": model,
                       "returned_models": sorted({r["returned_model"] for r in rows}),
                       "sent_settings": sorted({json.dumps(r["sent_settings"], sort_keys=True) for r in rows}),
-                      "prompt_version": generation.PROMPT_VERSION, "prompt_sha256": generation.prompt_sha256(),
+                      "prompt_version": args.prompt, "prompt_sha256": generation.prompt_sha256(args.prompt),
+                      "system_prompt": generation.PROMPTS[args.prompt],
                       "prices_per_1m": generation.PRICES[model]},
         "totals": {"prompt_tokens": sum(r["prompt_tokens"] for r in rows),
                    "completion_tokens": sum(r["completion_tokens"] for r in rows),

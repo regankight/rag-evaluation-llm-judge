@@ -20,14 +20,23 @@ from retrieval import Hit
 PRICES = {"gpt-6-luna": {"input": 0.10, "output": 0.50}}
 SETTINGS = {"reasoning_effort": "none", "temperature": 0, "max_completion_tokens": 200}
 
-PROMPT_VERSION = "v1-baseline"
-SYSTEM_PROMPT = "You answer questions using the provided context passages."
+REFUSAL_MARKER = "NOT_IN_CONTEXT"
 USER_TEMPLATE = "Context:\n{context}\n\nQuestion: {question}\nAnswer concisely."
+# Only the system prompt differs between versions (decision record 0007).
+PROMPTS = {
+    "v1-baseline": "You answer questions using the provided context passages.",
+    # Wording revised once on dev for format compliance only (record 0007 addendum): the first
+    # version produced free-text refusals ("The passages don't say...") instead of the marker.
+    "v2-not-in-context": ("Answer using only the provided context passages. If the passages do not "
+                          f"contain the answer, reply with exactly {REFUSAL_MARKER} and nothing else. "
+                          "Do not explain what the passages are missing."),
+}
+DEFAULT_PROMPT = "v1-baseline"
 NO_CONTEXT = "(no passages were retrieved)"
 
 
-def prompt_sha256() -> str:
-    return hashlib.sha256((SYSTEM_PROMPT + "\x1f" + USER_TEMPLATE).encode()).hexdigest()[:16]
+def prompt_sha256(version: str = DEFAULT_PROMPT) -> str:
+    return hashlib.sha256((PROMPTS[version] + "\x1f" + USER_TEMPLATE).encode()).hexdigest()[:16]
 
 
 def format_context(hits: list[Hit]) -> str:
@@ -53,8 +62,11 @@ class Generation:
 
 
 class Generator:
-    def __init__(self, model: str, client: OpenAI | None = None, transport: httpx.BaseTransport | None = None):
+    def __init__(self, model: str, prompt_version: str = DEFAULT_PROMPT, client: OpenAI | None = None,
+                 transport: httpx.BaseTransport | None = None):
         self.model = model
+        self.prompt_version = prompt_version
+        self.system_prompt = PROMPTS[prompt_version]  # unknown version fails here, before any call
         self._last_sent: dict = {}
         http = httpx.Client(transport=transport, event_hooks={"request": [self._capture]}, timeout=120)
         self.client = client or OpenAI(http_client=http)
@@ -64,7 +76,7 @@ class Generator:
         self._last_sent = {k: v for k, v in body.items() if k != "messages"}
 
     def answer(self, question: str, hits: list[Hit]) -> Generation:
-        messages = [{"role": "system", "content": SYSTEM_PROMPT},
+        messages = [{"role": "system", "content": self.system_prompt},
                     {"role": "user", "content": USER_TEMPLATE.format(
                         context=format_context(hits), question=question)}]
         start = time.perf_counter()

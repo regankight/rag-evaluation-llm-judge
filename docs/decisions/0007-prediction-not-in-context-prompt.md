@@ -45,3 +45,13 @@ Held-out sample: 100 answerable + 50 unanswerable, the same questions for both p
 ## Why this matters
 
 The headline isn't "the prompt fixed hallucination". It's the trade-off a product owner has to choose: **a grounded system that says "I don't know" more often, vs. a helpful one that answers from memory and is sometimes right for the wrong reason.** And the evaluation has to be able to show both sides.
+
+## Addendum, 2026-10-06: the one allowed dev adjustment (format only); v2 is now frozen
+
+The first v2 wording ("…reply with exactly: NOT_IN_CONTEXT") produced 2 free-text refusals on dev ("The passages don't say how much birds eat.", "The passages don't specify a release date."). Under the definitions above those count as ANSWERED, so they would have inflated v2's made-up rate for a formatting reason.
+
+Revised once, for format compliance only:
+
+> "Answer using only the provided context passages. If the passages do not contain the answer, reply with exactly NOT_IN_CONTEXT and nothing else. Do not explain what the passages are missing."
+
+On the dev rerun, every refusal is exactly `NOT_IN_CONTEXT`. **No change was made for accuracy or refusal rate.** Dev-only observations, not results: G.I. Joe is still answered from memory, and 4 of 6 dev questions whose gold passage wasn't retrieved are still answered (P3 may not hold). Both v2 dev runs are kept in `results/` with the exact system prompt in each manifest. **v2 is frozen from this point; held-out answers use this wording.**

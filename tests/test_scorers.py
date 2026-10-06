@@ -69,3 +69,32 @@ def test_reference_answer_keeps_short_form():
     from scorers import reference_answer
     assert reference_answer(["March 2013"]) == "March 2013"
     assert reference_answer(["A", "B", "C"]) == "A (also accepted: B; C)"
+
+
+from scorers import ANSWERED, REFUSED, classify_response  # noqa: E402
+
+V2 = "v2-not-in-context"
+
+
+@pytest.mark.parametrize("text,refusal,method", [
+    ("NOT_IN_CONTEXT", REFUSED, "marker"),
+    ("  NOT_IN_CONTEXT\n", REFUSED, "marker"),
+    ("NOT_IN_CONTEXT. The passages discuss other topics.", REFUSED, "marker_with_extra_text"),
+    ("The answer may be 1964, but NOT_IN_CONTEXT", ANSWERED, "marker_not_at_start"),
+    ("Wyoming.", ANSWERED, "marker"),
+])
+def test_v2_marker_classification(text, refusal, method):
+    assert classify_response(text, V2) == {"refusal": refusal, "method": method}
+
+
+@pytest.mark.parametrize("text,refusal", [
+    ("The context doesn’t specify Syracuse’s age.", REFUSED),            # curly apostrophe
+    ("The provided context doesn't say whether he has a wife.", REFUSED),
+    ("The context does not specify Georgia’s state flower.", REFUSED),
+    ("The passages do not mention it.", REFUSED),
+    ("G.I. Joe debuted in 1964, so it was 62 years old in 2026.", ANSWERED),
+    ("According to the provided context, the prime minister is Mark Rutte.", ANSWERED),
+])
+def test_v1_pattern_first_pass(text, refusal):
+    r = classify_response(text, "v1-baseline")
+    assert r["refusal"] == refusal and r["method"] == "v1_pattern_needs_review"
