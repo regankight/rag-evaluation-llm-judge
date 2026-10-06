@@ -20,6 +20,7 @@ dependencies = [
 
 [dependency-groups]
 dev = ["pytest>=8", "ruff>=0.6"]
+charts = ["matplotlib>=3.9"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
