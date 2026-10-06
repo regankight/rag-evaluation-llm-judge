@@ -43,6 +43,19 @@ def record(q, hits, g) -> dict:
     }
 
 
+def answer_questions(questions, index, gen, out_path: Path, k: int = TOP_K) -> list[dict]:
+    """Search, answer and record each question; one JSON line per answer, written as it goes."""
+    rows = []
+    with open(out_path, "w") as f:
+        for i, q in enumerate(questions, 1):
+            hits = index.search(q.question, k=k)
+            row = {**record(q, hits, gen.answer(q.question, hits)), "prompt_version": gen.prompt_version}
+            f.write(json.dumps(row, ensure_ascii=False) + "\n")
+            rows.append(row)
+            print(f"[{i}/{len(questions)}] {q.label:12} gold_retrieved={row['gold_retrieved']!s:5} {row['answer'][:60]!r}")
+    return rows
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--split", choices=["dev", "held_out"], required=True)
@@ -68,14 +81,7 @@ def main() -> None:
     out = Path("results") / run_id
     out.mkdir(parents=True)
 
-    rows = []
-    with open(out / "answers.jsonl", "w") as f:
-        for i, q in enumerate(chosen, 1):
-            hits = index.search(q.question, k=TOP_K)
-            row = {**record(q, hits, gen.answer(q.question, hits)), "prompt_version": args.prompt}
-            f.write(json.dumps(row, ensure_ascii=False) + "\n")
-            rows.append(row)
-            print(f"[{i}/{len(chosen)}] {q.label:12} gold_retrieved={row['gold_retrieved']!s:5} {row['answer'][:60]!r}")
+    rows = answer_questions(chosen, index, gen, out / "answers.jsonl")
 
     manifest = {
         "run_id": run_id, "started_utc": started.isoformat(),
