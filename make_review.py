@@ -45,6 +45,12 @@ def draw_part_b(answers: dict[str, dict[str, dict]], seed: int = SEED) -> list[d
     return items
 
 
+def embed_json(value) -> str:
+    """JSON safe to place inside a <script> block: escaping "</" means text such as
+    "</script>" in a passage can't close the block and inject HTML."""
+    return json.dumps(value, ensure_ascii=False).replace("</", "<\\/")
+
+
 def item_id(part: str, i: int) -> str:
     return f"{part}{i:03d}"
 
@@ -99,12 +105,7 @@ def main() -> None:
     page_b = [{k: x[k] for k in ("id", "question", "passages", "answer", "gold", "label")} for x in b_items]
     template = Path("review_template.html").read_text()
     html = template.replace(
-        "/*DATA*/",
-        "const PART_A = "
-        + json.dumps(page_a, ensure_ascii=False)
-        + ";\nconst PART_B = "
-        + json.dumps(page_b, ensure_ascii=False)
-        + ";",
+        "/*DATA*/", "const PART_A = " + embed_json(page_a) + ";\nconst PART_B = " + embed_json(page_b) + ";"
     )
     (OUT / "review.html").write_text(html)
     print(f"Part A: {len(a_items)} items, Part B: {len(b_items)} items -> {OUT / 'review.html'}")
