@@ -42,6 +42,18 @@ P4 by retrieval: gold passage retrieved +0.019 (n=52); not retrieved -0.120 (n=4
 - Judge (≥ 0.5) vs gold passage retrieved: {'signal_True_judge_True': 50, 'signal_True_judge_False': 2, 'signal_False_judge_True': 10, 'signal_False_judge_False': 38}.
 - Judge vs gold passage *or* gold answer text retrieved: {'signal_True_judge_True': 56, 'signal_True_judge_False': 3, 'signal_False_judge_True': 4, 'signal_False_judge_False': 37}. Labels mark one passage as correct, so the answer often sits in another retrieved passage.
 
+## Does the judge threshold matter?
+
+| Threshold | Known-truth judge right | Judged correct v1 | Judged correct v2 | Agrees with string match (real) |
+|---|---|---|---|---|
+| ≥ 0.5 | 358/360 | 59.0% | 56.0% | 161/200 |
+| ≥ 0.75 | 353/360 | 49.0% | 45.0% | 154/200 |
+| ≥ 1.0 | 340/360 | 42.0% | 38.0% | 150/200 |
+
+## Answer-key noise
+
+3/60 known-truth questions had a correct-by-construction answer scored below 0.75; inspected by hand, all 3 had a wrong or contradictory gold answer (decision 0008): 5% of answer keys, 95% CI 2%–14% (small sample).
+
 ## Failure labels (judge correctness; retrieval = gold passage retrieved)
 
 | | correct | correct_without_gold_passage | generation_error | retrieval_miss | refused |

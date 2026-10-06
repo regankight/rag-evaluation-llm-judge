@@ -50,6 +50,16 @@ def ci_halfwidth_at(values: list[float], n: int, seed: int = SEED, b: int = 2_00
     return (hi - lo) / 2
 
 
+def wilson_ci(k: int, n: int, z: float = 1.96) -> tuple[float, float]:
+    """95% Wilson score interval for a proportion; behaves well for small k (unlike k/n ± ...)."""
+    if n == 0:
+        return 0.0, 1.0
+    p = k / n
+    centre = (p + z * z / (2 * n)) / (1 + z * z / n)
+    half = z * ((p * (1 - p) / n + z * z / (4 * n * n)) ** 0.5) / (1 + z * z / n)
+    return max(0.0, centre - half), min(1.0, centre + half)
+
+
 # ---------- refusal labels ----------
 
 _SENTENCE_END = re.compile(r"(?<=[.!?])\s+(?=[A-Z0-9*\"'“])")
@@ -227,6 +237,30 @@ def analyze(d: dict) -> dict:
                    "judge_minutes_per_100_answerable_all_metrics": round(sum(secs.values()) * 100 / 60, 1),
                    "string_match": "microseconds, $0"}
 
+    # threshold sensitivity: does the 0.5 choice drive any conclusion?
+    kt_rows = d["known_truth"]
+    sens = {}
+    for t in (0.5, 0.75, 1.0):
+        kt_right = sum(r["answer_accuracy"]["value"] is not None and (r["answer_accuracy"]["value"] >= t) == r["is_correct"]
+                       for r in kt_rows)
+        acc_rate = {v: rate([acc[v][q] is not None and acc[v][q] >= t for q in ans]) for v in runs}
+        agree = sum(1 for v, q in rows if sm(v, q) == (runs[v][q]["scores"]["answer_accuracy"]["value"] >= t))
+        sens[str(t)] = {"known_truth_judge_right": kt_right, "n_known_truth": len(kt_rows),
+                        "judged_correct_v1": acc_rate["v1"], "judged_correct_v2": acc_rate["v2"],
+                        "agree_with_string_match": agree, "n_real": len(rows)}
+    out["threshold_sensitivity"] = sens
+
+    # answer-key noise: known-truth questions whose correct-by-construction answers the judge
+    # scored below 0.75; each was then inspected by hand (decision 0008)
+    by_q: dict = {}
+    for r in kt_rows:
+        if r["is_correct"]:
+            by_q.setdefault(r["case_id"].split(":")[0], []).append(r["answer_accuracy"]["value"])
+    flagged = sorted(q for q, vals in by_q.items() if any(v is not None and v < 0.75 for v in vals))
+    out["answer_key_noise"] = {"questions": len(by_q), "flagged": len(flagged), "flagged_qids": flagged,
+                               "inspected_bad_or_contradictory_gold": 3,
+                               "rate_ci95": [round(x, 3) for x in wilson_ci(3, len(by_q))]}
+
     # known-truth summary
     kt = d["known_truth"]
     out["known_truth"] = {"n": len(kt),
@@ -317,6 +351,21 @@ def report(a: dict) -> str:
         f"- Judge (≥ {JUDGE_CORRECT_AT}) vs gold passage retrieved: {a['context_recall_check']['vs_gold_passage_retrieved']}.",
         f"- Judge vs gold passage *or* gold answer text retrieved: {a['context_recall_check']['vs_gold_passage_or_answer_text_retrieved']}. "
         "Labels mark one passage as correct, so the answer often sits in another retrieved passage.",
+        "",
+        "## Does the judge threshold matter?",
+        "",
+        "| Threshold | Known-truth judge right | Judged correct v1 | Judged correct v2 | Agrees with string match (real) |",
+        "|---|---|---|---|---|",
+        *[f"| ≥ {t} | {x['known_truth_judge_right']}/{x['n_known_truth']} | {x['judged_correct_v1']['pct']}% | "
+          f"{x['judged_correct_v2']['pct']}% | {x['agree_with_string_match']}/{x['n_real']} |"
+          for t, x in a["threshold_sensitivity"].items()],
+        "",
+        "## Answer-key noise",
+        "",
+        f"{a['answer_key_noise']['flagged']}/{a['answer_key_noise']['questions']} known-truth questions had a correct-by-construction "
+        f"answer scored below 0.75; inspected by hand, all {a['answer_key_noise']['inspected_bad_or_contradictory_gold']} had a wrong "
+        f"or contradictory gold answer (decision 0008): {3 / a['answer_key_noise']['questions']:.0%} of answer keys, "
+        f"95% CI {a['answer_key_noise']['rate_ci95'][0]:.0%}–{a['answer_key_noise']['rate_ci95'][1]:.0%} (small sample).",
         "",
         "## Failure labels (judge correctness; retrieval = gold passage retrieved)",
         "",

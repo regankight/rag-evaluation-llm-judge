@@ -383,6 +383,70 @@
   "judge_minutes_per_100_answerable_all_metrics": 99.8,
   "string_match": "microseconds, $0"
  },
+ "threshold_sensitivity": {
+  "0.5": {
+   "known_truth_judge_right": 358,
+   "n_known_truth": 360,
+   "judged_correct_v1": {
+    "k": 59,
+    "n": 100,
+    "pct": 59.0
+   },
+   "judged_correct_v2": {
+    "k": 56,
+    "n": 100,
+    "pct": 56.0
+   },
+   "agree_with_string_match": 161,
+   "n_real": 200
+  },
+  "0.75": {
+   "known_truth_judge_right": 353,
+   "n_known_truth": 360,
+   "judged_correct_v1": {
+    "k": 49,
+    "n": 100,
+    "pct": 49.0
+   },
+   "judged_correct_v2": {
+    "k": 45,
+    "n": 100,
+    "pct": 45.0
+   },
+   "agree_with_string_match": 154,
+   "n_real": 200
+  },
+  "1.0": {
+   "known_truth_judge_right": 340,
+   "n_known_truth": 360,
+   "judged_correct_v1": {
+    "k": 42,
+    "n": 100,
+    "pct": 42.0
+   },
+   "judged_correct_v2": {
+    "k": 38,
+    "n": 100,
+    "pct": 38.0
+   },
+   "agree_with_string_match": 150,
+   "n_real": 200
+  }
+ },
+ "answer_key_noise": {
+  "questions": 60,
+  "flagged": 3,
+  "flagged_qids": [
+   "8fea7b906305",
+   "d34a19c48f90",
+   "e57e961a74b0"
+  ],
+  "inspected_bad_or_contradictory_gold": 3,
+  "rate_ci95": [
+   0.017,
+   0.137
+  ]
+ },
  "known_truth": {
   "n": 360,
   "string_match_right": 300,
