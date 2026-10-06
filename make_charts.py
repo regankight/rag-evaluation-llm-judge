@@ -1,6 +1,8 @@
-"""README chart: string matching vs the LLM judge on known-truth cases (decision 0008).
+"""README chart and social preview image.
 
-    uv run --group charts python make_charts.py   # writes docs/img/known-truth-{light,dark}.png
+    uv run --group charts python make_charts.py
+    # docs/img/known-truth-{light,dark}.png  string matching vs the judge on known-truth cases (decision 0008)
+    # docs/img/social-preview.png            made-up answers before/after the prompt change (decision 0007)
 
 Built from the committed known-truth scores, so it regenerates like every other number.
 Palette and mark specs follow the data-viz method used for this repo's charts: two
@@ -99,9 +101,66 @@ def draw(theme: str, data: dict, out: Path) -> None:
     plt.close(fig)
 
 
+def social_preview(out: Path) -> None:
+    """1280x640 card for link previews. One hero figure (the change), two same-scale meters:
+    the new prompt in the accent hue on a lighter step of its own ramp, the baseline muted."""
+    import json
+
+    a = json.loads(Path("reports/analysis.json").read_text())["P1"]
+    before, after = a["v1"], a["v2"]
+    t = THEMES["light"]
+    fig = plt.figure(figsize=(12.8, 6.4), dpi=100)
+    fig.patch.set_facecolor(t["surface"])
+    x0 = 0.07
+
+    def text(y, s, size, color, weight="normal"):
+        fig.text(x0, y, s, fontsize=size, color=color, fontweight=weight, ha="left", va="top")
+
+    text(0.90, "RAG EVALUATION  ·  LLM-AS-A-JUDGE  ·  RAGAS", 13, t["text2"])
+    text(0.83, "Made-up answers on unanswerable questions", 30, t["text"], "bold")
+    # hero figure: the arrow glyph isn't in Helvetica Neue, so it is set in DejaVu Sans
+    hero = {"fontsize": 72, "color": t["text"], "fontweight": "bold", "va": "top"}
+    fig.text(x0, 0.72, f"{before['pct']:.0f}%", ha="left", **hero)
+    fig.text(x0 + 0.215, 0.695, "\u2192", ha="center", family="DejaVu Sans", **{**hero, "fontsize": 60})
+    fig.text(x0 + 0.27, 0.72, f"{after['pct']:.0f}%", ha="left", **hero)
+
+    def meter(y, label, share, fill, track):
+        # label above the bar, so long labels can't run off the card
+        fig.text(x0, y + 0.07, label, fontsize=15, color=t["text"], ha="left", va="center")
+        ax = fig.add_axes((x0, y, 0.86, 0.04))
+        ax.barh([0], [100], color=track, height=1)
+        ax.barh([0], [share], color=fill, height=1)
+        ax.set_xlim(0, 100)
+        ax.axis("off")
+
+    meter(0.42, f"Baseline prompt: {before['k']} of {before['n']}", before["pct"], "#898781", t["grid"])
+    meter(
+        0.285,
+        f"Plus one line, \u201creply NOT_IN_CONTEXT\u201d: {after['k']} of {after['n']}",
+        after["pct"],
+        t["judge"],
+        "#cde2fb",
+    )
+
+    p_text = "p < 0.0001" if a["mcnemar_p"] < 0.0001 else f"p = {a['mcnemar_p']:.2g}"
+    text(0.20, f"Same 50 questions, refusals labeled by a human · exact McNemar {p_text}", 13, t["text2"])
+    text(
+        0.145,
+        "Also: string matching passed 60/60 \u201cIt is not X\u201d traps. The LLM judge caught all 60.",
+        13,
+        t["text2"],
+    )
+    text(0.065, "github.com/regankight/rag-evaluation-llm-judge", 13, t["text"], "bold")
+    out.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out, facecolor=t["surface"])
+    plt.close(fig)
+
+
 if __name__ == "__main__":
     data = shares()
     for theme in THEMES:
         path = Path("docs/img") / f"known-truth-{theme}.png"
         draw(theme, data, path)
         print(path, {k: tuple(round(v) for v in data[k]) for k, _ in ROWS})
+    social_preview(Path("docs/img/social-preview.png"))
+    print("docs/img/social-preview.png")
