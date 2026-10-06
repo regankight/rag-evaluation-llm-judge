@@ -18,6 +18,7 @@ from pathlib import Path
 from runs import HELD_OUT, JUDGE, JUDGE_CORRECT_AT, scores_file
 from scorers import ANSWERED, REFUSED, classify_response
 
+API_JUDGE = "gpt-6-luna"  # second judge, known-truth cases only (decision 0010)
 RUNS = {"v1": HELD_OUT["v1-baseline"], "v2": HELD_OUT["v2-not-in-context"]}
 SEED = 20261006
 B = 10_000  # bootstrap resamples
@@ -86,7 +87,15 @@ def load() -> dict:
     sample = json.loads(Path("review/sample.json").read_text())
     labels = json.loads(Path("review/review-results.json").read_text())["part_a"]
     human_v1 = {x["qid"]: labels[x["id"]] for x in sample["part_a"] if x["id"] in labels}
-    return {"runs": data, "human_v1": human_v1, "known_truth": load_jsonl(Path("known_truth", scores_file()))}
+    api = Path("known_truth", scores_file(API_JUDGE))
+    api_manifest = Path("known_truth", f"scoring-manifest-{API_JUDGE}.json")
+    return {
+        "runs": data,
+        "human_v1": human_v1,
+        "known_truth": load_jsonl(Path("known_truth", scores_file())),
+        "known_truth_api": load_jsonl(api) if api.exists() else [],
+        "known_truth_api_manifest": json.loads(api_manifest.read_text()) if api_manifest.exists() else None,
+    }
 
 
 def refusal(v: str, row: dict, human_v1: dict) -> str:
@@ -353,6 +362,42 @@ def analyze(d: dict) -> dict:
             for r in kt
         ),
     }
+
+    # second judge on the same known-truth cases (decision 0010): accuracy, agreement, cost, time
+    api = d["known_truth_api"]
+    if api:
+
+        def right(r):
+            v = r["answer_accuracy"]["value"]
+            return v is not None and (v >= JUDGE_CORRECT_AT) == r["is_correct"]
+
+        local_by = {r["case_id"]: r for r in kt}
+        session = d["known_truth_api_manifest"]["sessions"]
+        out["judge_comparison"] = {
+            "local": {
+                "judge": JUDGE,
+                "right": sum(right(r) for r in kt),
+                "n": len(kt),
+                "cost_usd": 0.0,
+                "minutes_sequential": round(sum(r["answer_accuracy"]["seconds"] for r in kt) / 60, 1),
+            },
+            "api": {
+                "judge": API_JUDGE,
+                "right": sum(right(r) for r in api),
+                "n": len(api),
+                "cost_usd": round(sum(x["cost_usd"] for x in session), 4),
+                "minutes_wall": round(sum(x["wall_seconds"] for x in session) / 60, 1),
+                "concurrency": session[-1]["concurrency"],
+                "settings_sent": session[-1]["settings_sent"],
+            },
+            "identical_values": sum(
+                r["answer_accuracy"]["value"] == local_by[r["case_id"]]["answer_accuracy"]["value"] for r in api
+            ),
+            "reworded_scored_1": {
+                "local": sum(r["variant"] == "reworded" and r["answer_accuracy"]["value"] == 1.0 for r in kt),
+                "api": sum(r["variant"] == "reworded" and r["answer_accuracy"]["value"] == 1.0 for r in api),
+            },
+        }
     return out
 
 
@@ -442,6 +487,26 @@ def report(a: dict) -> str:
         f"- Judge vs gold passage *or* gold answer text retrieved: {a['context_recall_check']['vs_gold_passage_or_answer_text_retrieved']}. "
         "Labels mark one passage as correct, so the answer often sits in another retrieved passage.",
         "",
+        *(
+            [
+                "## Local judge vs API judge (known-truth cases only, decision 0010)",
+                "",
+                '| | Right | Cost | Time | "Based on the passages…" answers scored 1.0 |',
+                "|---|---|---|---|---|",
+                f"| {a['judge_comparison']['local']['judge']} (local) | {a['judge_comparison']['local']['right']}/{a['judge_comparison']['local']['n']} | "
+                f"$0 | ~{a['judge_comparison']['local']['minutes_sequential']} min (one at a time) | "
+                f"{a['judge_comparison']['reworded_scored_1']['local']}/60 |",
+                f"| {a['judge_comparison']['api']['judge']} (API) | {a['judge_comparison']['api']['right']}/{a['judge_comparison']['api']['n']} | "
+                f"${a['judge_comparison']['api']['cost_usd']} | {a['judge_comparison']['api']['minutes_wall']} min "
+                f"({a['judge_comparison']['api']['concurrency']} parallel) | {a['judge_comparison']['reworded_scored_1']['api']}/60 |",
+                "",
+                f"Identical scores on {a['judge_comparison']['identical_values']}/{a['judge_comparison']['local']['n']} cases. "
+                "Real answers are not scored by the API judge: they were written by the same model family (self-preference).",
+                "",
+            ]
+            if "judge_comparison" in a
+            else []
+        ),
         "## Does the judge threshold matter?",
         "",
         "| Threshold | Known-truth judge right | Judged correct v1 | Judged correct v2 | Agrees with string match (real) |",

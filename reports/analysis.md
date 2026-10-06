@@ -42,6 +42,15 @@ P4 by retrieval: gold passage retrieved +0.019 (n=52); not retrieved -0.120 (n=4
 - Judge (≥ 0.5) vs gold passage retrieved: {'signal_True_judge_True': 50, 'signal_True_judge_False': 2, 'signal_False_judge_True': 10, 'signal_False_judge_False': 38}.
 - Judge vs gold passage *or* gold answer text retrieved: {'signal_True_judge_True': 56, 'signal_True_judge_False': 3, 'signal_False_judge_True': 4, 'signal_False_judge_False': 37}. Labels mark one passage as correct, so the answer often sits in another retrieved passage.
 
+## Local judge vs API judge (known-truth cases only, decision 0010)
+
+| | Right | Cost | Time | "Based on the passages…" answers scored 1.0 |
+|---|---|---|---|---|
+| qwen3-14b-8k (local) | 358/360 | $0 | ~23.1 min (one at a time) | 48/60 |
+| gpt-6-luna (API) | 359/360 | $0.0546 | 5.5 min (8 parallel) | 57/60 |
+
+Identical scores on 337/360 cases. Real answers are not scored by the API judge: they were written by the same model family (self-preference).
+
 ## Does the judge threshold matter?
 
 | Threshold | Known-truth judge right | Judged correct v1 | Judged correct v2 | Agrees with string match (real) |

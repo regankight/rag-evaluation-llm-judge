@@ -451,5 +451,30 @@
   "n": 360,
   "string_match_right": 300,
   "judge_right": 358
+ },
+ "judge_comparison": {
+  "local": {
+   "judge": "qwen3-14b-8k",
+   "right": 358,
+   "n": 360,
+   "cost_usd": 0.0,
+   "minutes_sequential": 23.1
+  },
+  "api": {
+   "judge": "gpt-6-luna",
+   "right": 359,
+   "n": 360,
+   "cost_usd": 0.0546,
+   "minutes_wall": 5.5,
+   "concurrency": 8,
+   "settings_sent": [
+    "{\"max_completion_tokens\": 1024, \"model\": \"gpt-6-luna\", \"reasoning_effort\": \"none\", \"temperature\": 0}"
+   ]
+  },
+  "identical_values": 337,
+  "reworded_scored_1": {
+   "local": 48,
+   "api": 57
+  }
  }
 }

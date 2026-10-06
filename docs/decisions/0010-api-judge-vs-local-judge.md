@@ -27,3 +27,19 @@ Same AnswerAccuracy metric, same 360 cases, same ≥ 0.5 threshold. `gpt-6-luna`
 - Accuracy: both judges at 355+/360. The 3 bad-gold questions (record 0008) should trouble both, since the problem is in the answer key, not the judge.
 - Cost: API under $0.10 for all 360; local $0 but ~30 min of machine time. API wall time: a few minutes.
 - If the API judge clearly beats the local judge, the README recommends it for clients despite the cost; if they tie, the local judge wins on cost and data privacy.
+
+## Outcome (2026-10-06)
+
+| | Right (≥ 0.5) | Cost | Time | "Based on the passages…" answers scored 1.0 |
+|---|---|---|---|---|
+| `qwen3-14b-8k` (local) | 358/360 | $0 | ~23 min, one at a time | 48/60 |
+| `gpt-6-luna` (API) | 359/360 | $0.055 | 5.5 min, 8 parallel | 57/60 |
+
+Settings sent (recorded at the wire): `temperature 0`, `reasoning_effort "none"`, `max_completion_tokens 1024`. Identical scores on 337/360 cases.
+
+- **Accuracy expectation held:** both 355+/360.
+- **The API judge's one "miss" is a flaw in the test, not the judge:** for *"When did John Grisham publish his first book?"* (gold "June 1989"), the swapped answer was "The answer is 1980s.", which isn't actually wrong. The swap was checked for *string* overlap, not *meaning* overlap. A second limitation of constructed cases, alongside the bad-gold one in record 0008.
+- **The real difference is robustness to wording:** the local judge marked down a meaning-neutral prefix ("Based on the passages, it is…") in 12/60 cases; the API judge in 3/60.
+- **Cost expectation held:** API $0.055 for 360 cases, about 1.5 cents per 100 answers; local $0 but ~4× slower even before parallelism.
+
+**What to tell a client:** on short-answer correctness, a 14B local judge matches an API judge on accuracy. Choose the local judge when data can't leave the network or volume is huge; choose the API judge for speed and consistency across answer styles. Either way, check it with known-truth cases first: that's what found both judges' real weaknesses here.
