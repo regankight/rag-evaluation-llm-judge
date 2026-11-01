@@ -22,6 +22,8 @@ make reproduce   # tests, lint, regression-gate demo, regenerate every reported 
 
 Needs [uv](https://docs.astral.sh/uv/) and Python 3.12. No API key, model or dataset download is required to reproduce the results: every run's answers and scores are committed. To re-run the pipeline itself, see [Reproduce from scratch](#reproduce-from-scratch).
 
+**Why `make reproduce` shows different refusal numbers from the headline.** The regression gate prints made-up answers 26/50 → 12/50 (p = 0.00052) and over-refusal 1/52 → 2/52. The headline figures (29/50 → 12/50, p = 0.000015; over-refusal 0/52 → 2/52) use the 150 human refusal labels. A CI gate can't wait for humans, so it detects v1's free-text refusals with a pattern, and that pattern disagrees with the human labels on a handful of hedged answers. Both sets are correct for what they count; published rates use the human labels. Details: [decision 0011](docs/decisions/0011-regression-gate.md).
+
 ## For a product owner
 
 - **Don't trust a single RAG score.** The cheap metric (string matching) and the expensive one (an LLM judge) disagreed on 39 of 200 real answers. Which one you believe moves the measured accuracy by 12–15 points (string matching 47% vs judge 59% for the baseline prompt).

@@ -25,7 +25,7 @@ A rise that isn't statistically supported produces a **warning**, not a failure.
 
 ## Known limitation: automatic refusal detection
 
-A CI gate can't wait for human labels, so refusals are classified automatically: the exact marker for v2, a first-pass pattern for v1's free text. On v1 the pattern finds **26/50** made-up answers, while the 150 human labels (Part A) find **29/50**. The pattern misses some hedged answers ("refuses, then adds a related fact"). The gate's verdict is the same either way, but **published rates use the human labels**, and a client deploying this should give the model an explicit refusal marker, as v2 does, so detection is exact.
+A CI gate can't wait for human labels, so refusals are classified automatically: the exact marker for v2, a first-pass pattern for v1's free text. On v1 the pattern finds **26/50** made-up answers, while the 150 human labels (Part A) find **29/50**. The two disagree in both directions: the pattern counts some hedged answers ("refuses, then adds a related fact") as refusals where the human counted an answer, and misses a few plain refusals. The gate's verdict is the same either way, but **published rates use the human labels**, and a client deploying this should give the model an explicit refusal marker, as v2 does, so detection is exact.
 
 ## Consequences
 
