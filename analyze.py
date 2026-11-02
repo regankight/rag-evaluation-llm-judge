@@ -143,7 +143,7 @@ def analyze(d: dict) -> dict:
         v2_methods[m] = v2_methods.get(m, 0) + 1
     out["v2_marker_methods"] = v2_methods
 
-    # P1 made-up rate on unanswerable + McNemar
+    # P1 answered-unanswerable rate + McNemar
     made_up = {v: [R[v][q] == ANSWERED for q in unans] for v in runs}
     b = sum(1 for q in unans if R["v1"][q] == ANSWERED and R["v2"][q] == REFUSED)
     c = sum(1 for q in unans if R["v1"][q] == REFUSED and R["v2"][q] == ANSWERED)
@@ -491,7 +491,7 @@ def report(a: dict) -> str:
         "",
         "| # | Measure | Predicted | v1 | v2 | Range held? | Direction held? |",
         "|---|---|---|---|---|---|---|",
-        f"| P1 | Made-up answers (unanswerable, answered) | v1 15–35%, v2 ≤10%, p<0.05 | {P1['v1']['k']}/{P1['v1']['n']} ({P1['v1']['pct']}%) | "
+        f"| P1 | Answered an unanswerable question | v1 15–35%, v2 ≤10%, p<0.05 | {P1['v1']['k']}/{P1['v1']['n']} ({P1['v1']['pct']}%) | "
         f"{P1['v2']['k']}/{P1['v2']['n']} ({P1['v2']['pct']}%) | {verdict('P1', p1_ok)} | {dirn(d1, f' (exact McNemar p = {P1["mcnemar_p"]:.2g})')} |",
         f"| P2 | Over-refusal (gold passage retrieved, refused) | v1 ≤5%, v2 5–15% | {P2['v1']['k']}/{P2['v1']['n']} ({P2['v1']['pct']}%) | "
         f"{P2['v2']['k']}/{P2['v2']['n']} ({P2['v2']['pct']}%) | {verdict('P2', p2_ok)} | {dirn(d2, ' (descriptive; few events)')} |",

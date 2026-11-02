@@ -1,6 +1,6 @@
 # rag-evaluation-llm-judge
 
-**Which RAG evaluation can you trust?** String matching vs an LLM judge (RAGAS with a local Qwen judge), tested on 360 known-truth answers and 150 human labels, then used to measure a prompt change that cut made-up answers on unanswerable questions from **58% to 24%**.
+**Which RAG evaluation can you trust?** String matching vs an LLM judge (RAGAS with a local Qwen judge), tested on 360 known-truth answers and 150 human labels, then used to measure a prompt change that cut answers to unanswerable questions from **58% to 24%**, and answers the retrieved passages don't support from **24% to 8%**.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/img/known-truth-dark.png">
@@ -10,8 +10,8 @@
 ## Three findings
 
 1. **String matching can't read.** It accepted all 60 trap answers of the form *"It is not X; the answer is Y"* as correct, because the gold words appear; the LLM judge rejected all 60. On 200 real answers, string matching rejected 33 that the judge accepted, mostly paraphrases ("1782 to 1840" vs gold "27 October 1782–27 May 1840").
-2. **One prompt line cut made-up answers from 58% to 24%.** On 50 unanswerable questions, telling the model to reply `NOT_IN_CONTEXT` when the passages lack the answer fixed 17 made-up answers and broke none (exact McNemar p = 0.000015; refusals labeled by a human). The cost: answering less from memory where retrieval missed (accuracy −0.11 there, −0.004 where retrieval worked). The overall accuracy change, −0.048, isn't statistically established.
-3. **The judge needs testing too.** Settings were silently not applied twice: Ollama truncated long judge prompts, and RAGAS rewrote `temperature` 0 → 1.0 for models named `gpt-5` and up. The obvious RAGAS correctness metric scored correct answers 0 on this data. About 5% of the dataset's own answer key was wrong. Every one was caught by checking what actually happened, not what the configuration said.
+2. **One prompt line cut answers to unanswerable questions from 58% to 24%.** On 50 questions TyDi QA marks unanswerable, telling the model to reply `NOT_IN_CONTEXT` when the passages lack the answer fixed 17 and broke none (exact McNemar p = 0.000015; refusals labeled by a human). Not every such answer is made up: a blind labelling pass against the retrieved passages found that of v1's 29, 10 were supported by a passage, 7 refused and then added a related fact, and 12 were **unsupported** (a misreading, or a fact in no passage). Unsupported answers fell from 12/50 to 4/50 (fixed 9, broke 1, exact McNemar p = 0.021; [report](reports/grounding.md)). The cost: answering less from memory where retrieval missed (accuracy −0.11 there, −0.004 where retrieval worked). The overall accuracy change, −0.048, isn't statistically established.
+3. **The judge needs testing too.** Settings were silently not applied twice: Ollama truncated long judge prompts, and RAGAS rewrote `temperature` 0 → 1.0 for models named `gpt-5` and up. The obvious RAGAS correctness metric scored correct answers 0 on this data. RAGAS faithfulness scored 13 of the 16 answers a human found unsupported as faithful (≥ 0.5). About 5% of the dataset's own answer key was wrong. Every one was caught by checking what actually happened, not what the configuration said.
 
 ## Quick start
 
@@ -22,13 +22,13 @@ make reproduce   # tests, lint, regression-gate demo, regenerate every reported 
 
 Needs [uv](https://docs.astral.sh/uv/) and Python 3.12. No API key, model or dataset download is required to reproduce the results: every run's answers and scores are committed. To re-run the pipeline itself, see [Reproduce from scratch](#reproduce-from-scratch).
 
-**Why `make reproduce` shows different refusal numbers from the headline.** The regression gate prints made-up answers 26/50 → 12/50 (p = 0.00052) and over-refusal 1/52 → 2/52. The headline figures (29/50 → 12/50, p = 0.000015; over-refusal 0/52 → 2/52) use the 150 human refusal labels. A CI gate can't wait for humans, so it detects v1's free-text refusals with a pattern, and that pattern disagrees with the human labels on a handful of hedged answers. Both sets are correct for what they count; published rates use the human labels. Details: [decision 0011](docs/decisions/0011-regression-gate.md).
+**Why `make reproduce` shows different refusal numbers from the headline.** The regression gate prints answered-unanswerable 26/50 → 12/50 (p = 0.00052) and over-refusal 1/52 → 2/52. The headline figures (29/50 → 12/50, p = 0.000015; over-refusal 0/52 → 2/52) use the 150 human refusal labels. A CI gate can't wait for humans, so it detects v1's free-text refusals with a pattern, and that pattern disagrees with the human labels on a handful of hedged answers. Both sets are correct for what they count; published rates use the human labels. Details: [decision 0011](docs/decisions/0011-regression-gate.md).
 
 ## For a product owner
 
 - **Don't trust a single RAG score.** The cheap metric (string matching) and the expensive one (an LLM judge) disagreed on 39 of 200 real answers. Which one you believe moves the measured accuracy by 12–15 points (string matching 47% vs judge 59% for the baseline prompt).
-- **"Fewer hallucinations" is a trade-off, not a free win.** The grounded prompt made up answers far less often (58% → 24% on unanswerable questions) but also stopped answering from general knowledge when search missed. Decide which behavior your users need: a system that says "I don't know", or one that's sometimes right for the wrong reason.
-- **Evaluate on every change, automatically.** The regression gate here would have blocked reverting to the old prompt (made-up answers back up, with strong evidence), and lets the new one through with a warning for a human to review.
+- **"Fewer hallucinations" is a trade-off, not a free win.** The grounded prompt answered unanswerable questions far less often (58% → 24%; unsupported answers 24% → 8%) but also stopped answering from general knowledge when search missed. Decide which behavior your users need: a system that says "I don't know", or one that's sometimes right for the wrong reason.
+- **Evaluate on every change, automatically.** The regression gate here would have blocked reverting to the old prompt (answers to unanswerable questions back up, with strong evidence), and lets the new one through with a warning for a human to review.
 - **Budget:** generating answers cost under 1 cent per 100 questions. A local judge costs nothing per call but took ~100 minutes per 100 answers for three metrics on a laptop; an API judge did 360 checks in 5.5 minutes for 5.5 cents.
 
 ## When to use which scorer
@@ -72,7 +72,8 @@ Full report: [`reports/analysis.md`](reports/analysis.md), regenerated by `make 
 
 | | v1 | v2 | Predicted size held? | Direction held? |
 |---|---|---|---|---|
-| Made-up answers (unanswerable, n=50) | 58% | 24% | No (baseline was worse than predicted) | **Yes**, p = 0.000015 |
+| Answered an unanswerable question (n=50) | 58% | 24% | No (baseline was worse than predicted) | **Yes**, p = 0.000015 |
+| ↳ of which unsupported by the passages (blind human labels, n=50) | 24% | 8% | Not predicted (added later) | **Yes**, p = 0.021 |
 | Refused although the answer was retrieved (n=52) | 0% | 3.8% | No (smaller cost than feared) | Yes |
 | Answered although the gold passage wasn't retrieved (n=48) | 79% | 35% | No (near miss) | Yes |
 | Mean answer accuracy (n=100) | 0.54 | 0.49 | Point estimate in range | **Not established** (95% CI −0.100 to +0.003) |
@@ -94,11 +95,12 @@ Full report: [`reports/analysis.md`](reports/analysis.md), regenerated by `make 
 | Prompt v2's first wording produced free-text refusals instead of the marker | Dev run; fixed once, for format only, as declared in advance, then frozen | [0007](docs/decisions/0007-prediction-not-in-context-prompt.md) |
 | A blind human review of answer *correctness* wasn't workable: open-domain trivia needs domain knowledge a reviewer doesn't have | Stopped and replaced with known-truth tests; humans kept for what they judge reliably (refusals) | [0008](docs/decisions/0008-known-truth-tests-replace-correctness-review.md) |
 | Ten issues in a pre-publication code review (e.g. the gate crashing on blank scores, decimals matching integers) | Each reproduced before fixing; nine fixed, one found not to be an issue | [0012](docs/decisions/0012-code-review-fixes.md) |
+| The headline measure was called **"made-up answers"**, but 10 of v1's 29 were supported by a retrieved passage | A blind labelling pass of every such answer against its passages; measure renamed, unsupported answers reported separately | [0013](docs/decisions/0013-grounding-labels.md) |
 
 ## How I'd roll this out at a client
 
 - **Build a gold set with subject-matter experts** (50–100 questions from real traffic). Wikipedia trivia stood in here; a client's documents need people who know them.
-- **Make refusals explicit.** Have the prompt emit a marker like `NOT_IN_CONTEXT` so refusals can be counted exactly. Automatic detection of free-text refusals counted 26 made-up answers where a human counted 29.
+- **Make refusals explicit.** Have the prompt emit a marker like `NOT_IN_CONTEXT` so refusals can be counted exactly. Automatic detection of free-text refusals counted 26 answers to unanswerable questions where a human counted 29.
 - **Test the judge before trusting it,** with known-truth cases in the client's own answer style, and re-test when the judge model or framework version changes.
 - **Choose the judge's hosting by data and volume.** A local model (here `qwen3:14b`) keeps data on the client's network and costs nothing per call. A hosted model, via the client's existing OpenAI, Azure OpenAI or AWS Bedrock account, is faster in parallel and more consistent across answer styles. Never let a model judge answers from its own family.
 - **Pin settings at the HTTP layer and record what was sent.** Servers and libraries drop or change settings silently; it happened twice in this project.
@@ -113,6 +115,7 @@ Full report: [`reports/analysis.md`](reports/analysis.md), regenerated by `make 
 - **One local judge family** for the real answers. The API judge is used only on known-truth cases, to avoid self-preference.
 - **Five predictions were tested without correction for multiple comparisons.** The main result (p = 0.000015) would survive any standard correction; the others are reported descriptively.
 - **Small samples:** 50 unanswerable and 100 answerable held-out questions. Intervals are reported throughout.
+- **Grounding labels come from one labeller (the author)**, blind to prompt version and judge scores, judged against the passages only. Seven answers that open by refusing were grouped by a stated rule rather than relabelled ([decision 0013](docs/decisions/0013-grounding-labels.md)).
 
 ## Design decisions
 

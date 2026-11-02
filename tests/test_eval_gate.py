@@ -40,7 +40,7 @@ def test_significant_rise_in_made_up_answers_fails():
     for i in range(8):  # 8 of 10 unanswerable now answered: exact McNemar p = 2 * 0.5**8
         cand["rows"][f"u{i}"]["answer"] = "It was 1964."
     g = evaluate(baseline(), cand)
-    assert not g.passed and any("made-up answers rose" in f for f in g.failures)
+    assert not g.passed and any("answered-unanswerable rose" in f for f in g.failures)
 
 
 def test_small_rise_in_made_up_answers_only_warns():

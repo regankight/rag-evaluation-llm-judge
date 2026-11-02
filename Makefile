@@ -17,8 +17,9 @@ gate-demo:  ## the regression gate on the committed runs: adopting v2 passes, re
 	uv run python eval_gate.py $(V1) $(V2)
 	! uv run python eval_gate.py $(V2) $(V1) > /dev/null && echo "reverting the prompt is blocked, as expected"
 
-reproduce: test lint gate-demo  ## regenerate reports/analysis.* from the committed run artifacts
+reproduce: test lint gate-demo  ## regenerate reports/ (analysis + grounding) from the committed artifacts
 	uv run python analyze.py > /dev/null
+	uv run python grounding.py > /dev/null
 	git diff --exit-code reports/ && echo "reports/ regenerated identically"
 
 # The steps below need OPENAI_API_KEY in .env and the local judge (see .env.example).
