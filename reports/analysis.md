@@ -6,7 +6,7 @@ Held-out: 100 answerable + 50 unanswerable questions, answered by both prompts (
 
 | # | Measure | Predicted | v1 | v2 | Range held? | Direction held? |
 |---|---|---|---|---|---|---|
-| P1 | Made-up answers (unanswerable, answered) | v1 15–35%, v2 ≤10%, p<0.05 | 29/50 (58.0%) | 12/50 (24.0%) | **P1: did not hold** | yes (exact McNemar p = 1.5e-05) |
+| P1 | Answered an unanswerable question | v1 15–35%, v2 ≤10%, p<0.05 | 29/50 (58.0%) | 12/50 (24.0%) | **P1: did not hold** | yes (exact McNemar p = 1.5e-05) |
 | P2 | Over-refusal (gold passage retrieved, refused) | v1 ≤5%, v2 5–15% | 0/52 (0.0%) | 2/52 (3.8%) | **P2: did not hold** | yes (descriptive; few events) |
 | P3 | Ungrounded answers (gold passage not retrieved, answered) | v1 50–75%, v2 ≤30% | 38/48 (79.2%) | 17/48 (35.4%) | **P3: did not hold** | yes |
 | P4 | Mean answer accuracy, v2 − v1 | −0.10 to −0.03 | 0.54 | 0.4925 | **P4: held** (point estimate -0.048) | no (95% CI [-0.100, +0.003] includes 0: not established) |

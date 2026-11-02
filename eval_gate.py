@@ -3,7 +3,7 @@
     uv run python eval_gate.py <baseline_run_dir> <candidate_run_dir>   # exit 0 = pass, 1 = fail
 
 Meant to run on every prompt or model change, offline, on runs already answered and scored.
-Fails only on evidence: a statistically supported rise in made-up answers or drop in accuracy,
+Fails only on evidence: a statistically supported rise in answers to unanswerable questions or drop in accuracy,
 or a broken measurement. Trade-offs (more refusals) are reported as warnings for a human.
 """
 
@@ -105,7 +105,7 @@ def evaluate(base: dict, cand: dict) -> GateResult:
     un = [q for q in qids if base["rows"][q]["label"] == "unanswerable"]
     ans = [q for q in qids if base["rows"][q]["label"] == "answerable"]
 
-    # 3. made-up answers on unanswerable questions (paired)
+    # 3. answers to unanswerable questions, which should have been refused (paired)
     b_made = {q: not refused(base["rows"][q]) for q in un}
     c_made = {q: not refused(cand["rows"][q]) for q in un}
     worse = sum(1 for q in un if c_made[q] and not b_made[q])
@@ -114,10 +114,10 @@ def evaluate(base: dict, cand: dict) -> GateResult:
     rate = f"{sum(b_made.values())}/{len(un)} -> {sum(c_made.values())}/{len(un)}"
     detail = f"{rate} (worse on {worse}, better on {better}; exact McNemar p = {p:.2g})"
     if worse > better and p < ALPHA:
-        g.failures.append(f"made-up answers rose: {detail}")
+        g.failures.append(f"answered-unanswerable rose: {detail}")
     elif worse > better:
-        g.warnings.append(f"made-up answers rose, not statistically supported: {detail}")
-    g.checks.append(("made-up answers (unanswerable)", detail))
+        g.warnings.append(f"answered-unanswerable rose, not statistically supported: {detail}")
+    g.checks.append(("answered-unanswerable", detail))
 
     # 4. answer accuracy on answerable questions (paired bootstrap)
     def acc(run, q):
