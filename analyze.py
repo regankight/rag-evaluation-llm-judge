@@ -81,6 +81,13 @@ def load_jsonl(path: Path) -> list[dict]:
     return [json.loads(x) for x in path.read_text().splitlines() if x.strip()]
 
 
+def load_human_v1() -> dict[str, str]:
+    """Part A human refusal labels for v1, keyed by qid."""
+    sample = json.loads(Path("review/sample.json").read_text())
+    labels = json.loads(Path("review/review-results.json").read_text())["part_a"]
+    return {x["qid"]: labels[x["id"]] for x in sample["part_a"] if x["id"] in labels}
+
+
 def load() -> dict:
     data = {}
     for v, d in RUNS.items():
@@ -89,9 +96,7 @@ def load() -> dict:
         # String match, answer-in-context and refusal are code, not judge output: recomputed from
         # the answers with the current scorers rather than read from stored values (finding 4).
         data[v] = {q: {**answers[q], "scores": {**scores[q], **deterministic_scores(answers[q])}} for q in answers}
-    sample = json.loads(Path("review/sample.json").read_text())
-    labels = json.loads(Path("review/review-results.json").read_text())["part_a"]
-    human_v1 = {x["qid"]: labels[x["id"]] for x in sample["part_a"] if x["id"] in labels}
+    human_v1 = load_human_v1()
     api = Path("known_truth", scores_file(API_JUDGE))
     api_manifest = Path("known_truth", f"scoring-manifest-{API_JUDGE}.json")
     return {

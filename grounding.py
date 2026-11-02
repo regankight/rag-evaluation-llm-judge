@@ -15,8 +15,9 @@ import re
 from collections import Counter
 from pathlib import Path
 
-from analyze import mcnemar_exact
-from runs import HELD_OUT, scores_file
+from analyze import RUNS, load_human_v1, load_jsonl, mcnemar_exact, refusal
+from runs import scores_file
+from scorers import ANSWERED
 
 LABELS = Path("review/grounding-labels.json")
 REPORT = Path("reports/grounding.md")
@@ -41,13 +42,27 @@ def group(human_label: str, answer: str) -> str:
 def load() -> tuple[dict, dict, list[str]]:
     labels = json.loads(LABELS.read_text())["labels"]
     runs = {}
-    for name, path in HELD_OUT.items():
-        v = "v1" if name.startswith("v1") else "v2"
-        answers = {r["qid"]: r for r in map(json.loads, Path(path, "answers.jsonl").read_text().splitlines()) if r}
-        scores = {r["qid"]: r for r in map(json.loads, Path(path, scores_file()).read_text().splitlines()) if r}
+    for v, path in RUNS.items():
+        answers = {r["qid"]: r for r in load_jsonl(Path(path, "answers.jsonl"))}
+        scores = {r["qid"]: r for r in load_jsonl(Path(path, scores_file()))}
         runs[v] = (answers, scores)
     unanswerable = sorted(q for q, r in runs["v1"][0].items() if r["label"] == "unanswerable")
+    check_coverage(labels, runs, unanswerable, load_human_v1())
     return labels, runs, unanswerable
+
+
+def check_coverage(labels: dict, runs: dict, unanswerable: list[str], human_v1: dict) -> None:
+    """The labels must cover exactly the answers to unanswerable questions (v1: human refusal
+    labels, v2: the exact marker). An unlabelled answer would otherwise count as not unsupported."""
+    expected = {
+        f"{v}_{q}"
+        for v, (answers, _) in runs.items()
+        for q in unanswerable
+        if refusal(v, answers[q], human_v1) == ANSWERED
+    }
+    missing, extra = sorted(expected - labels.keys()), sorted(labels.keys() - expected)
+    if missing or extra:
+        raise ValueError(f"grounding labels don't match the answered questions: missing {missing}, unexpected {extra}")
 
 
 def analyze(labels: dict, runs: dict, unanswerable: list[str]) -> dict:

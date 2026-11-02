@@ -1,6 +1,9 @@
 """The grouping rule and the committed grounding labels (offline)."""
 
-from grounding import analyze, group, load
+import pytest
+
+from analyze import load_human_v1
+from grounding import analyze, check_coverage, group, load
 
 
 def test_supported_label_is_kept_whatever_the_wording():
@@ -29,3 +32,14 @@ def test_committed_labels_cover_every_answered_unanswerable_question():
     a = analyze(labels, runs, unanswerable)
     assert a["v1"]["answered"] == 29 and a["v2"]["answered"] == 12  # the human refusal counts (decision 0007)
     assert sum(a["v1"].get(g, 0) for g in ("supported", "refuses_plus_fact", "unsupported")) == 29
+
+
+def test_missing_or_extra_label_is_an_error():
+    labels, runs, unanswerable = load()
+    human_v1 = load_human_v1()
+    missing = dict(labels)
+    missing.pop(next(iter(missing)))
+    with pytest.raises(ValueError, match="missing"):
+        check_coverage(missing, runs, unanswerable, human_v1)
+    with pytest.raises(ValueError, match="unexpected"):
+        check_coverage({**labels, "v2_not-a-real-qid": "supported"}, runs, unanswerable, human_v1)
