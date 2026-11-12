@@ -1,6 +1,12 @@
 # rag-evaluation-llm-judge
 
-**Which RAG evaluation can you trust?** String matching vs an LLM judge (RAGAS with a local Qwen judge), tested on 360 known-truth answers and 150 human labels, then used to measure a prompt change that cut answers to unanswerable questions from **58% to 24%**, and answers the retrieved passages don't support from **24% to 8%**.
+[![tests](https://github.com/regankight/rag-evaluation-llm-judge/actions/workflows/tests.yml/badge.svg)](https://github.com/regankight/rag-evaluation-llm-judge/actions/workflows/tests.yml)
+
+**Checks whether a RAG evaluation can be trusted, then uses it to measure a prompt fix.**
+
+- **Result:** one prompt line cut answers to unanswerable questions from **58% to 24%**, and unsupported answers from **24% to 8%**.
+- **Why it matters:** fewer confident wrong answers, with the cost measured too, plus a CI gate that blocks changes that make things worse.
+- **Stack:** Python · RAG · LLM evaluation · LLM-as-a-judge (RAGAS) · OpenAI · Ollama · BM25 · pytest · GitHub Actions
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/img/known-truth-dark.png">
