@@ -134,7 +134,17 @@ I designed and directed this project. AI coding tools wrote most of the code and
 
 ## Design decisions
 
-Twelve decision records in [`docs/decisions/`](docs/decisions/) cover every non-obvious choice, including the ones that changed: dataset, judge, labels, generator, context window, metric switch, prediction and outcome, known-truth tests, retrieval/chunking/preprocessing, API vs local judge, regression gate, and code-review fixes.
+| Choice | Instead of | Why | Record |
+|---|---|---|---|
+| TyDi QA (dev split) | MIRACL, MKQA, Mr. TyDi | Only one with both gold answers and passage labels at laptop size | [0001](docs/decisions/0001-dataset-tydiqa.md) |
+| Local Qwen judge, OpenAI generator | Same model family for both | Avoids self-preference bias | [0002](docs/decisions/0002-judge-qwen3-14b-spike.md), [0004](docs/decisions/0004-generator-gpt-6-luna.md) |
+| RAGAS AnswerAccuracy | FactualCorrectness | FactualCorrectness scored clearly correct answers 0 | [0006](docs/decisions/0006-answer-accuracy-over-factual-correctness.md) |
+| Known-truth test cases | Human correctness review | Truth guaranteed by construction; judge 358/360, string match 300/360 | [0008](docs/decisions/0008-known-truth-tests-replace-correctness-review.md) |
+| BM25, top 5, no re-chunking | Dense/hybrid retrieval | Retrieval held fixed so differences come from prompt or scorer | [0009](docs/decisions/0009-retrieval-chunking-preprocessing.md) |
+| Gate that needs statistical evidence | Fail on any drop | Blocks real regressions (12/50 → 26/50, p = 0.00052), not noise | [0011](docs/decisions/0011-regression-gate.md) |
+| Blind human grounding labels | Trust RAGAS faithfulness | Faithfulness passed 13 of 16 unsupported answers | [0013](docs/decisions/0013-grounding-labels.md) |
+
+All thirteen decision records: [`docs/decisions/`](docs/decisions/).
 
 Testing approach: [`TESTING.md`](TESTING.md). Security notes: [`SECURITY.md`](SECURITY.md).
 
