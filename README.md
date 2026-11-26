@@ -1,6 +1,6 @@
 # rag-evaluation-llm-judge
 
-[![tests](https://github.com/regankight/rag-evaluation-llm-judge/actions/workflows/tests.yml/badge.svg)](https://github.com/regankight/rag-evaluation-llm-judge/actions/workflows/tests.yml)
+[![tests](https://github.com/regankight/rag-evaluation-llm-judge/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/regankight/rag-evaluation-llm-judge/actions/workflows/tests.yml)
 
 **Checks whether a RAG evaluation can be trusted, then uses it to measure a prompt fix.**
 
