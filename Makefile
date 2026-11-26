@@ -1,11 +1,14 @@
 # Everything offline uses committed artifacts; no API key, judge or network needed except `data`.
-.PHONY: test lint data reproduce gate-demo
+.PHONY: test test-deepeval lint data reproduce gate-demo
 
 V1 := results/held_out-v1-baseline-20261006T064508Z
 V2 := results/held_out-v2-not-in-context-20261006T064838Z
 
 test:  ## unit + integration tests (offline)
 	uv run pytest -q
+
+test-deepeval:  ## DeepEval experiment tests, in its own environment (offline; decision 0014)
+	cd experiments/deepeval && uv run --locked pytest -q
 
 lint:  ## lint and formatting check
 	uv run ruff check . && uv run ruff format --check .
@@ -17,7 +20,7 @@ gate-demo:  ## the regression gate on the committed runs: adopting v2 passes, re
 	uv run python eval_gate.py $(V1) $(V2)
 	! uv run python eval_gate.py $(V2) $(V1) > /dev/null && echo "reverting the prompt is blocked, as expected"
 
-reproduce: test lint gate-demo  ## regenerate reports/ (analysis + grounding) from the committed artifacts
+reproduce: test test-deepeval lint gate-demo  ## regenerate reports/ (analysis + grounding) from the committed artifacts
 	uv run python analyze.py > /dev/null
 	uv run python grounding.py > /dev/null
 	git diff --exit-code reports/ && echo "reports/ regenerated identically"
@@ -28,3 +31,4 @@ reproduce: test lint gate-demo  ## regenerate reports/ (analysis + grounding) fr
 #   uv run python run_pipeline.py --split held_out --prompt v2-not-in-context
 #   uv run python score_run.py results/<run_id> --max-minutes 600
 #   uv run python known_truth.py build && uv run python known_truth.py score
+#   uv run --project experiments/deepeval python experiments/deepeval/deepeval_faithfulness.py   (decision 0014)

@@ -14,3 +14,8 @@ JUDGE_CORRECT_AT = 0.5  # AnswerAccuracy >= this counts as "judged correct" (dec
 
 def scores_file(judge: str = JUDGE) -> str:
     return f"scores-{judge.replace(':', '_')}.jsonl"
+
+
+def deepeval_faithfulness_file(judge: str = JUDGE) -> str:
+    """DeepEval faithfulness scores (docs/decisions/0014), written by experiments/deepeval/."""
+    return f"scores-deepeval-faithfulness-{judge.replace(':', '_')}.jsonl"

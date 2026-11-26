@@ -1,0 +1,23 @@
+# DeepEval lives in its own environment (docs/decisions/0014): in the main lockfile it
+# downgraded RAGAS's dependencies (huggingface-hub 2.1 -> 1.16, datasets, click, fsspec),
+# which would change the environment the committed results were produced in.
+[project]
+name = "deepeval-experiment"
+version = "0.1.0"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "deepeval==4.3.6",
+    "openai==3.3.0",  # same client as the main project
+    "httpx>=0.27",
+    "python-dotenv>=1.0",
+]
+
+[dependency-groups]
+dev = ["pytest>=8"]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_default_fixture_loop_scope = "function"

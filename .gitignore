@@ -7,3 +7,5 @@ __pycache__/
 # 3-answer smoke test from Phase 1; every other run is committed as evidence.
 results/dev-v1-baseline-20261005T165456Z/
 review/review.html
+# DeepEval cache and test-run files (docs/decisions/0014)
+.deepeval/

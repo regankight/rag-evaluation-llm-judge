@@ -16,7 +16,7 @@ from collections import Counter
 from pathlib import Path
 
 from analyze import RUNS, load_human_v1, load_jsonl, mcnemar_exact, refusal
-from runs import scores_file
+from runs import deepeval_faithfulness_file, scores_file
 from scorers import ANSWERED
 
 LABELS = Path("review/grounding-labels.json")
@@ -45,6 +45,10 @@ def load() -> tuple[dict, dict, list[str]]:
     for v, path in RUNS.items():
         answers = {r["qid"]: r for r in load_jsonl(Path(path, "answers.jsonl"))}
         scores = {r["qid"]: r for r in load_jsonl(Path(path, scores_file()))}
+        # DeepEval scores (decision 0014) are optional: absent until experiments/deepeval/ has run.
+        deepeval = Path(path, deepeval_faithfulness_file())
+        for r in load_jsonl(deepeval) if deepeval.exists() else []:
+            scores.setdefault(r["qid"], {})["deepeval"] = r
         runs[v] = (answers, scores)
     unanswerable = sorted(q for q, r in runs["v1"][0].items() if r["label"] == "unanswerable")
     check_coverage(labels, runs, unanswerable, load_human_v1())
@@ -87,6 +91,47 @@ def analyze(labels: dict, runs: dict, unanswerable: list[str]) -> dict:
     for g in GROUPS:
         faith = [runs[k[:2]][1][k[3:]]["faithfulness"]["value"] for k, x in groups.items() if x == g]
         out["judge_faithful"][g] = {"n": len(faith), "faithful": sum(f is not None and f >= 0.5 for f in faith)}
+    if all("deepeval" in runs[k[:2]][1].get(k[3:], {}) for k in groups):
+        out["deepeval"] = deepeval_vs_ragas(groups, runs)
+    return out
+
+
+def deepeval_vs_ragas(groups: dict, runs: dict) -> dict:
+    """Per human group: how many answers each judge calls faithful (>= 0.5). DeepEval twice,
+    from the same verdicts: its default (claims not backed by the passages pass) and with
+    penalize_ambiguous_claims (they fail). Then, on the unsupported answers, a paired exact
+    McNemar test of RAGAS vs strict DeepEval at catching them (decision 0014)."""
+
+    def scores(k):
+        r = runs[k[:2]][1][k[3:]]
+        return r["faithfulness"]["value"], r["deepeval"]
+
+    def faithful(x):
+        return x is not None and x >= 0.5
+
+    # A failed DeepEval row would otherwise count as "caught": compare only once every row scored.
+    not_scored = sorted(k for k in groups if scores(k)[1]["status"] != "ok")
+    if not_scored:
+        return {"not_scored": not_scored}
+    out = {}
+    for g in GROUPS:
+        rows = [scores(k) for k, x in groups.items() if x == g]
+        out[g] = {
+            "n": len(rows),
+            "ragas": sum(faithful(f) for f, _ in rows),
+            "deepeval_default": sum(faithful(d["borderline_passes"]) for _, d in rows),
+            "deepeval_strict": sum(faithful(d["borderline_fails"]) for _, d in rows),
+        }
+    bad = [scores(k) for k, x in groups.items() if x == "unsupported"]
+    only_ragas = sum(not faithful(f) and faithful(d["borderline_fails"]) for f, d in bad)
+    only_deepeval = sum(faithful(f) and not faithful(d["borderline_fails"]) for f, d in bad)
+    out["caught_unsupported"] = {
+        "ragas": sum(not faithful(f) for f, _ in bad),
+        "deepeval_strict": sum(not faithful(d["borderline_fails"]) for _, d in bad),
+        "only_ragas": only_ragas,
+        "only_deepeval": only_deepeval,
+        "p": mcnemar_exact(only_ragas, only_deepeval),
+    }
     return out
 
 
@@ -122,7 +167,38 @@ def report(a: dict) -> str:
     for g in GROUPS:
         j = a["judge_faithful"][g]
         rows.append(f"| {g.replace('_', ' ')} | {j['n']} | {j['faithful']} |")
+    if "deepeval" in a:
+        rows += deepeval_report(a["deepeval"])
     return "\n".join(rows) + "\n"
+
+
+def deepeval_report(d: dict) -> list[str]:
+    rows = ["", "## RAGAS vs DeepEval, same judge (decision 0014)", ""]
+    if "not_scored" in d:
+        return rows + [f"Not reported: DeepEval has no score for {len(d['not_scored'])} answer(s); rerun the scorer."]
+    c = d["caught_unsupported"]
+    rows += [
+        "Answers each scorer calls faithful (≥ 0.5). Same local judge, same answers and passages.",
+        "DeepEval *default*: a claim the passages don't back up passes unless they contradict it.",
+        "DeepEval *strict*: `penalize_ambiguous_claims`, so it fails. Both come from the same verdicts.",
+        "A good scorer calls supported answers faithful and unsupported ones not.",
+        "",
+        "| Human group | Answers | RAGAS | DeepEval default | DeepEval strict |",
+        "|---|---|---|---|---|",
+    ]
+    for g in GROUPS:
+        x = d[g]
+        rows.append(
+            f"| {g.replace('_', ' ')} | {x['n']} | {x['ragas']} | {x['deepeval_default']} | {x['deepeval_strict']} |"
+        )
+    n = d["unsupported"]["n"]
+    rows += [
+        "",
+        f"Unsupported answers caught (scored < 0.5): RAGAS {c['ragas']}/{n}, DeepEval strict "
+        f"{c['deepeval_strict']}/{n}; only RAGAS {c['only_ragas']}, only DeepEval {c['only_deepeval']} "
+        f"(exact McNemar p = {c['p']:.2g}).",
+    ]
+    return rows
 
 
 if __name__ == "__main__":
