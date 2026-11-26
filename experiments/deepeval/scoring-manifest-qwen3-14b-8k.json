@@ -1,0 +1,55 @@
+{
+ "sessions": [
+  {
+   "scored_this_session": 1,
+   "judge_settings_sent": [
+    "{\"max_tokens\": 2048, \"model\": \"qwen3-14b-8k\", \"reasoning_effort\": \"none\", \"temperature\": 0}"
+   ],
+   "ollama_truncations": 0,
+   "tokens": {
+    "prompt_tokens": 1720,
+    "completion_tokens": 579
+   }
+  },
+  {
+   "scored_this_session": 35,
+   "judge_settings_sent": [
+    "{\"max_tokens\": 2048, \"model\": \"qwen3-14b-8k\", \"reasoning_effort\": \"none\", \"temperature\": 0}"
+   ],
+   "ollama_truncations": 0,
+   "tokens": {
+    "prompt_tokens": 77656,
+    "completion_tokens": 25681
+   }
+  },
+  {
+   "scored_this_session": 5,
+   "judge_settings_sent": [
+    "{\"max_tokens\": 2048, \"model\": \"qwen3-14b-8k\", \"reasoning_effort\": \"none\", \"temperature\": 0}"
+   ],
+   "ollama_truncations": 0,
+   "tokens": {
+    "prompt_tokens": 11889,
+    "completion_tokens": 4160
+   }
+  }
+ ],
+ "about": "DeepEval FaithfulnessMetric on the grounding-labelled answers (docs/decisions/0014)",
+ "score_files": [
+  "results/held_out-v1-baseline-20261006T064508Z/scores-deepeval-faithfulness-qwen3-14b-8k.jsonl",
+  "results/held_out-v2-not-in-context-20261006T064838Z/scores-deepeval-faithfulness-qwen3-14b-8k.jsonl"
+ ],
+ "judge_model": "qwen3-14b-8k",
+ "judge_settings_requested": {
+  "temperature": 0,
+  "reasoning_effort": "none",
+  "max_tokens": 2048
+ },
+ "rows": 41,
+ "scored_ok": 41,
+ "ollama_truncations_total": 0,
+ "versions": {
+  "deepeval": "4.3.6",
+  "openai": "3.3.0"
+ }
+}

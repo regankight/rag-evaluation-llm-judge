@@ -19,3 +19,18 @@ Unsupported answers: 12/50 (24%) → 4/50 (8%); v2 fixed 9 and broke 1 (exact Mc
 | supported | 18 | 17 |
 | refuses plus fact | 7 | 6 |
 | unsupported | 16 | 13 |
+
+## RAGAS vs DeepEval, same judge (decision 0014)
+
+Answers each scorer calls faithful (≥ 0.5). Same local judge, same answers and passages.
+DeepEval *default*: a claim the passages don't back up passes unless they contradict it.
+DeepEval *strict*: `penalize_ambiguous_claims`, so it fails. Both come from the same verdicts.
+A good scorer calls supported answers faithful and unsupported ones not.
+
+| Human group | Answers | RAGAS | DeepEval default | DeepEval strict |
+|---|---|---|---|---|
+| supported | 18 | 17 | 18 | 18 |
+| refuses plus fact | 7 | 6 | 7 | 7 |
+| unsupported | 16 | 13 | 14 | 12 |
+
+Unsupported answers caught (scored < 0.5): RAGAS 3/16, DeepEval strict 4/16; only RAGAS 0, only DeepEval 1 (exact McNemar p = 1).
