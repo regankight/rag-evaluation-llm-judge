@@ -20,6 +20,7 @@ from runs import deepeval_faithfulness_file, scores_file
 from scorers import ANSWERED
 
 LABELS = Path("review/grounding-labels.json")
+DEEPEVAL_MANIFEST = Path("experiments/deepeval/scoring-manifest-qwen3-14b-8k.json")
 REPORT = Path("reports/grounding.md")
 GROUPS = ("supported", "refuses_plus_fact", "unsupported")
 
@@ -48,7 +49,8 @@ def load() -> tuple[dict, dict, list[str]]:
         # DeepEval scores (decision 0014) are optional: absent until experiments/deepeval/ has run.
         deepeval = Path(path, deepeval_faithfulness_file())
         for r in load_jsonl(deepeval) if deepeval.exists() else []:
-            scores.setdefault(r["qid"], {})["deepeval"] = r
+            if r["qid"] in scores:  # only next to a RAGAS score, the other side of the comparison
+                scores[r["qid"]]["deepeval"] = r
         runs[v] = (answers, scores)
     unanswerable = sorted(q for q, r in runs["v1"][0].items() if r["label"] == "unanswerable")
     check_coverage(labels, runs, unanswerable, load_human_v1())
@@ -91,12 +93,13 @@ def analyze(labels: dict, runs: dict, unanswerable: list[str]) -> dict:
     for g in GROUPS:
         faith = [runs[k[:2]][1][k[3:]]["faithfulness"]["value"] for k, x in groups.items() if x == g]
         out["judge_faithful"][g] = {"n": len(faith), "faithful": sum(f is not None and f >= 0.5 for f in faith)}
-    if all("deepeval" in runs[k[:2]][1].get(k[3:], {}) for k in groups):
-        out["deepeval"] = deepeval_vs_ragas(groups, runs)
+    if any("deepeval" in runs[k[:2]][1].get(k[3:], {}) for k in groups):
+        manifest = json.loads(DEEPEVAL_MANIFEST.read_text()) if DEEPEVAL_MANIFEST.exists() else {}
+        out["deepeval"] = deepeval_vs_ragas(groups, runs, manifest.get("ollama_truncations_total", 0))
     return out
 
 
-def deepeval_vs_ragas(groups: dict, runs: dict) -> dict:
+def deepeval_vs_ragas(groups: dict, runs: dict, truncations: int = 0) -> dict:
     """Per human group: how many answers each judge calls faithful (>= 0.5). DeepEval twice,
     from the same verdicts: its default (claims not backed by the passages pass) and with
     penalize_ambiguous_claims (they fail). Then, on the unsupported answers, a paired exact
@@ -104,12 +107,15 @@ def deepeval_vs_ragas(groups: dict, runs: dict) -> dict:
 
     def scores(k):
         r = runs[k[:2]][1][k[3:]]
-        return r["faithfulness"]["value"], r["deepeval"]
+        return r["faithfulness"]["value"], r.get("deepeval", {"status": "missing"})
 
     def faithful(x):
         return x is not None and x >= 0.5
 
-    # A failed DeepEval row would otherwise count as "caught": compare only once every row scored.
+    # Truncated prompts make scores invalid (decision 0005), and a failed or missing row would
+    # otherwise count as "caught": compare only when every row scored cleanly.
+    if truncations:
+        return {"truncations": truncations}
     not_scored = sorted(k for k in groups if scores(k)[1]["status"] != "ok")
     if not_scored:
         return {"not_scored": not_scored}
@@ -174,6 +180,10 @@ def report(a: dict) -> str:
 
 def deepeval_report(d: dict) -> list[str]:
     rows = ["", "## RAGAS vs DeepEval, same judge (decision 0014)", ""]
+    if "truncations" in d:
+        return rows + [
+            f"Not reported: Ollama truncated {d['truncations']} DeepEval prompt(s), so its scores are invalid."
+        ]
     if "not_scored" in d:
         return rows + [f"Not reported: DeepEval has no score for {len(d['not_scored'])} answer(s); rerun the scorer."]
     c = d["caught_unsupported"]

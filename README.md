@@ -111,7 +111,7 @@ I designed and directed this project. AI coding tools wrote most of the code and
 - **My part:** the question and scope, the evaluation design, metric choices, predictions written before each run, the human labels, and every decision record in [`docs/decisions/`](docs/decisions/).
 - **The tools' part:** most of the implementation and tests.
 - **How I check the work:** code that runs isn't proof it's right, so I check what actually happened. That's how this project caught silent prompt truncation, a library overriding `temperature`, and a default metric scoring correct answers 0 (see the table above).
-- **Guardrails:** 127 tests, including mutation-checked key tests; `make reproduce` fails on any byte difference in the reports; CI runs on every push and pull request.
+- **Guardrails:** 131 tests, including mutation-checked key tests; `make reproduce` fails on any byte difference in the reports; CI runs on every push and pull request.
 
 ## How I'd roll this out at a client
 

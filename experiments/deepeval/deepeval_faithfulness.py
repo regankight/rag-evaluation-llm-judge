@@ -40,6 +40,7 @@ from deepeval.models import DeepEvalBaseLLM  # noqa: E402
 from deepeval.test_case import LLMTestCase  # noqa: E402
 from dotenv import load_dotenv  # noqa: E402
 from openai import AsyncOpenAI  # noqa: E402
+from pydantic import ValidationError  # noqa: E402
 
 from judge_clients import Recorder, http_client  # noqa: E402
 from runs import HELD_OUT, deepeval_faithfulness_file  # noqa: E402
@@ -81,7 +82,14 @@ class PinnedJudge(DeepEvalBaseLLM):
             model=self.model_name, messages=[{"role": "user", "content": prompt}], **kwargs
         )
         text = r.choices[0].message.content or ""
-        return schema.model_validate_json(text) if schema is not None else text
+        if schema is None:
+            return text
+        try:
+            return schema.model_validate_json(text)
+        except ValidationError:
+            # A fence, a preamble or "No, because..." as a verdict: hand DeepEval the text, and its
+            # own lenient parser (trimAndLoadJson, verdict normalization) handles it as usual.
+            return text
 
 
 def scores_from_verdicts(verdicts: list[str]) -> dict:
@@ -91,6 +99,17 @@ def scores_from_verdicts(verdicts: list[str]) -> dict:
         "borderline_passes": 1.0 if n == 0 else sum(v in ("yes", "borderline") for v in verdicts) / n,
         "borderline_fails": 1.0 if n == 0 else sum(v == "yes" for v in verdicts) / n,
     }
+
+
+def check(n_claims: int, n_verdicts: int, ours: float, deepevals: float) -> str:
+    """ "ok", or why the row can't be trusted. One verdict per claim is what the prompt asks for;
+    fewer would silently shrink the denominator. Our default score must equal DeepEval's own, or
+    the stored scores no longer mean what record 0014 says (e.g. after a library update)."""
+    if n_verdicts != n_claims:
+        return f"error:verdict_count:{n_verdicts}_for_{n_claims}_claims"
+    if abs(ours - deepevals) > 1e-9:
+        return f"error:score_mismatch:{ours}_vs_{deepevals}"
+    return "ok"
 
 
 def cases() -> list[dict]:
@@ -110,12 +129,14 @@ async def score_one(judge: DeepEvalBaseLLM, a: dict) -> dict:
             LLMTestCase(input=a["question"], actual_output=a["answer"], retrieval_context=contexts),
             _show_indicator=False,
         )
-        verdicts = [str(v.verdict) for v in metric.verdicts]
+        kept = [v for v in metric.verdicts if v is not None]  # DeepEval drops unreadable verdicts too
+        scores = scores_from_verdicts([str(v.verdict) for v in kept])
         row.update(
-            status="ok",
+            status=check(len(metric.claims), len(metric.verdicts), scores["borderline_passes"], metric.score),
             claims=metric.claims,
-            verdicts=[{"verdict": str(v.verdict), "reason": v.reason} for v in metric.verdicts],
-            **scores_from_verdicts(verdicts),
+            verdicts=[None if v is None else {"verdict": str(v.verdict), "reason": v.reason} for v in metric.verdicts],
+            deepeval_score=metric.score,
+            **scores,
         )
     except Exception as e:  # recorded, not raised: one bad answer must not stop the run
         row.update(status=f"error:{type(e).__name__}:{str(e)[:120]}", borderline_passes=None, borderline_fails=None)

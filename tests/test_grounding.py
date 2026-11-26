@@ -79,3 +79,22 @@ def test_failed_deepeval_rows_block_the_comparison_instead_of_counting_as_caught
     a = analyze(labels, with_deepeval(runs, labels, lambda k: None, status="error:X"), unanswerable)
     assert len(a["deepeval"]["not_scored"]) == 41
     assert "Not reported" in report(a)
+
+
+def test_partial_deepeval_run_says_what_is_missing():
+    labels, runs, unanswerable = load()
+    first = sorted(labels)[0]
+    a = analyze(labels, with_deepeval(runs, {first: labels[first]}, lambda k: 1.0), unanswerable)
+    assert len(a["deepeval"]["not_scored"]) == 40
+    assert "Not reported" in report(a)
+
+
+def test_truncated_deepeval_prompts_block_the_comparison(tmp_path, monkeypatch):
+    import grounding
+
+    manifest = tmp_path / "m.json"
+    manifest.write_text('{"ollama_truncations_total": 2}')
+    monkeypatch.setattr(grounding, "DEEPEVAL_MANIFEST", manifest)
+    labels, runs, unanswerable = load()
+    a = analyze(labels, with_deepeval(runs, labels, lambda k: 1.0), unanswerable)
+    assert a["deepeval"] == {"truncations": 2} and "truncated 2" in report(a)

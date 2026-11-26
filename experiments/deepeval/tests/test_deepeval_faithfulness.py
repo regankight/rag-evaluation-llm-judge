@@ -117,3 +117,34 @@ def test_telemetry_is_off():
     import os
 
     assert os.environ["DEEPEVAL_TELEMETRY_OPT_OUT"] == "1"
+
+
+def test_fenced_or_chatty_json_is_parsed_by_deepeval_not_lost():
+    def fenced(request):
+        body = json.loads(request.content)
+        name = body["response_format"]["json_schema"]["name"]
+        content = "Sure, here you go:\n```json\n" + json.dumps(CANNED[name]) + "\n```"
+        if name == "Verdicts":  # a verdict word with extra text, which DeepEval normalizes
+            content = json.dumps({"verdicts": [{"verdict": "yes"}, {"verdict": "Borderline, not stated"}]})
+        msg = {"role": "assistant", "content": content}
+        return httpx.Response(
+            200,
+            json={
+                "id": "x",
+                "object": "chat.completion",
+                "created": 0,
+                "model": "m",
+                "choices": [{"index": 0, "message": msg, "finish_reason": "stop"}],
+            },
+        )
+
+    row = asyncio.run(df.score_one(judge_with(fenced)[0], answer()))
+    assert row["status"] == "ok"
+    assert [v["verdict"] for v in row["verdicts"]] == ["yes", "borderline"]
+    assert row["borderline_passes"] == row["deepeval_score"] == 1.0
+
+
+def test_check_flags_missing_verdicts_and_score_drift():
+    assert df.check(2, 2, 0.5, 0.5) == "ok"
+    assert df.check(5, 2, 1.0, 1.0).startswith("error:verdict_count")
+    assert df.check(2, 2, 1.0, 0.5).startswith("error:score_mismatch")
