@@ -17,7 +17,7 @@
 
 1. **String matching can't read.** It accepted all 60 trap answers of the form *"It is not X; the answer is Y"* as correct, because the gold words appear; the LLM judge rejected all 60. On 200 real answers, string matching rejected 33 that the judge accepted, mostly paraphrases ("1782 to 1840" vs gold "27 October 1782–27 May 1840").
 2. **One prompt line cut answers to unanswerable questions from 58% to 24%.** On 50 questions TyDi QA marks unanswerable, telling the model to reply `NOT_IN_CONTEXT` when the passages lack the answer fixed 17 and broke none (exact McNemar p = 0.000015; refusals labeled by a human). Not every such answer is made up: a blind labelling pass against the retrieved passages found that of v1's 29, 10 were supported by a passage, 7 refused and then added a related fact, and 12 were **unsupported** (a misreading, or a fact in no passage). Unsupported answers fell from 12/50 to 4/50 (fixed 9, broke 1, exact McNemar p = 0.021; [report](reports/grounding.md)). The cost: answering less from memory where retrieval missed (accuracy −0.11 there, −0.004 where retrieval worked). The overall accuracy change, −0.048, isn't statistically established.
-3. **The judge needs testing too.** Settings were silently not applied twice: Ollama truncated long judge prompts, and RAGAS rewrote `temperature` 0 → 1.0 for models named `gpt-5` and up. The obvious RAGAS correctness metric scored correct answers 0 on this data. RAGAS faithfulness scored 13 of the 16 answers a human found unsupported as faithful (≥ 0.5). About 5% of the dataset's own answer key was wrong. Every one was caught by checking what actually happened, not what the configuration said.
+3. **The judge needs testing too.** Settings were silently not applied twice: Ollama truncated long judge prompts, and RAGAS rewrote `temperature` 0 → 1.0 for models named `gpt-5` and up. The obvious RAGAS correctness metric scored correct answers 0 on this data. RAGAS faithfulness scored 13 of the 16 answers a human found unsupported as faithful (≥ 0.5). A second library, DeepEval, on the same judge, did no better (strict mode caught 4 of 16, p = 1): the judge and the metric's definition are the limit, not the library ([decision 0014](docs/decisions/0014-deepeval-faithfulness-blind-spot.md)). About 5% of the dataset's own answer key was wrong. Every one was caught by checking what actually happened, not what the configuration said.
 
 ## Quick start
 
@@ -43,7 +43,7 @@ Needs [uv](https://docs.astral.sh/uv/) and Python 3.12. No API key, model or dat
 |---|---|---|---|
 | **String matching** | Short exact answers (names, dates, IDs); instant, free regression checks in CI | Paraphrases; negation; long answers | Failed 60/60 negation traps; rejected 33 real answers the judge accepted |
 | **LLM judge (RAGAS answer accuracy)** | Correctness when wording varies | Anything you haven't tested it on first | 356/358 on clean known-truth cases (local), 358/358 (API) |
-| **LLM judge (faithfulness)** | "Did the answer stick to the passages?" | Telling a refusal from a correct answer | v1's free-text refusals all scored "faithful"; 69/71 `NOT_IN_CONTEXT` refusals came back blank |
+| **LLM judge (faithfulness)** | "Did the answer stick to the passages?" | Telling a refusal from a correct answer | v1's free-text refusals all scored "faithful"; 69/71 `NOT_IN_CONTEXT` refusals came back blank; RAGAS and DeepEval both passed most unsupported answers (13/16, 12/16) |
 | **Humans** | Definitions a metric can't settle (what counts as a refusal) | Open-domain correctness without domain knowledge | 150 refusal labels; the automatic pattern disagreed on 16 |
 | **Known-truth cases** | Testing any scorer before trusting it | Measuring how often failures happen in real traffic | Found both judges' real weaknesses (wording sensitivity, bad answer keys) |
 
@@ -111,7 +111,7 @@ I designed and directed this project. AI coding tools wrote most of the code and
 - **My part:** the question and scope, the evaluation design, metric choices, predictions written before each run, the human labels, and every decision record in [`docs/decisions/`](docs/decisions/).
 - **The tools' part:** most of the implementation and tests.
 - **How I check the work:** code that runs isn't proof it's right, so I check what actually happened. That's how this project caught silent prompt truncation, a library overriding `temperature`, and a default metric scoring correct answers 0 (see the table above).
-- **Guardrails:** 131 tests, including mutation-checked key tests; `make reproduce` fails on any byte difference in the reports; CI runs on every push and pull request.
+- **Guardrails:** 132 tests, including mutation-checked key tests; `make reproduce` fails on any byte difference in the reports; CI runs on every push and pull request.
 
 ## How I'd roll this out at a client
 
@@ -144,7 +144,7 @@ I designed and directed this project. AI coding tools wrote most of the code and
 | BM25, top 5, no re-chunking | Dense/hybrid retrieval | Retrieval held fixed so differences come from prompt or scorer | [0009](docs/decisions/0009-retrieval-chunking-preprocessing.md) |
 | Gate that needs statistical evidence | Fail on any drop | Blocks real regressions (12/50 → 26/50, p = 0.00052), not noise | [0011](docs/decisions/0011-regression-gate.md) |
 | Blind human grounding labels | Trust RAGAS faithfulness | Faithfulness passed 13 of 16 unsupported answers | [0013](docs/decisions/0013-grounding-labels.md) |
-| DeepEval as a second faithfulness scorer, same judge, one question | Adding a second library everywhere | Separates "RAGAS's blind spot" from "the judge's"; own lockfile, as it downgraded RAGAS's dependencies | [0014](docs/decisions/0014-deepeval-faithfulness-blind-spot.md) |
+| DeepEval as a second faithfulness scorer, same judge, one question | Adding a second library everywhere | Showed the blind spot is the judge's, not RAGAS's (12/16 vs 13/16 missed); own lockfile, as it downgraded RAGAS's dependencies | [0014](docs/decisions/0014-deepeval-faithfulness-blind-spot.md) |
 
 All fourteen decision records: [`docs/decisions/`](docs/decisions/).
 
@@ -160,7 +160,7 @@ uv run python run_pipeline.py --split held_out --prompt v1-baseline
 uv run python run_pipeline.py --split held_out --prompt v2-not-in-context
 uv run python score_run.py results/<run_id> --max-minutes 600   # resumable; ~2–3 h per run locally
 uv run python eval_gate.py results/<baseline> results/<candidate>
-uv run --project experiments/deepeval python experiments/deepeval/deepeval_faithfulness.py   # decision 0014; 41 answers, resumable
+uv run --project experiments/deepeval python experiments/deepeval/deepeval_faithfulness.py   # decision 0014; ~75 min on a MacBook Air, resumable
 ```
 
 New runs get new folder names; point [`runs.py`](runs.py) at them to analyze them. The OpenAI cost of both held-out runs was about 2 cents.

@@ -1,6 +1,6 @@
 # 0014: Is the faithfulness blind spot RAGAS's, or the judge's? A second library, same judge
 
-**Status:** Accepted, 2026-11-26. Setup and predictions written **before** DeepEval was run on any answer.
+**Status:** Accepted, 2026-11-26. Setup and predictions written **before** DeepEval was run on any answer (commit 84b81ce); outcome added after.
 
 ## The question
 
@@ -32,10 +32,35 @@ RAGAS faithfulness scored 13 of the 16 answers a human labelled *unsupported* as
 - If prediction 2 holds without breaking 3, the advice becomes: pick the faithfulness *definition*, not just the library.
 - If DeepEval strict also misses most unsupported answers, the judge is the limit, and blind human labels (0013) stay the only reliable check here.
 
-## Outcome
+## Outcome (2026-11-26)
 
-*Pending: to be filled in from `reports/grounding.md` after the run.*
+41/41 answers scored, 0 Ollama truncations, `temperature 0` sent in every session ([manifest](../../experiments/deepeval/scoring-manifest-qwen3-14b-8k.json)). About 74 minutes on a MacBook Air.
 
-## Next, only if the result is interesting
+| Human group | Answers | Called faithful (≥ 0.5): RAGAS | DeepEval default | DeepEval strict |
+|---|---|---|---|---|
+| supported | 18 | 17 | 18 | 18 |
+| refuses plus fact | 7 | 6 | 7 | 7 |
+| **unsupported** | **16** | **13** | **14** | **12** |
 
-Answer relevancy, a G-Eval correctness rubric on the 360 known-truth cases (0008), and contextual precision/recall against `answer_in_context`. They are not run now, so this record answers one question.
+Unsupported answers caught: RAGAS 3/16, DeepEval strict 4/16; only RAGAS 0, only DeepEval 1 (exact McNemar p = 1). Full table: [`reports/grounding.md`](../../reports/grounding.md).
+
+| Prediction | Result | Held? |
+|---|---|---|
+| 1. Default catches ≤ 2 of 16 | 2 | Yes |
+| 2. Strict catches ≥ 7 of 16 | 4 | **No** |
+| 3. Strict flags ≤ 3 of 18 supported | 0 | Yes |
+| 4. Misreads stay hard for both | strict caught 2/7 misreads, 2/9 not-in-passages | Partly: both kinds were hard |
+| 5. Significance uncertain | p = 1 | Yes: no difference |
+
+**Answer to the question: the blind spot is not RAGAS's.** A second library with a stricter definition, on the same judge, missed nearly as many. Two reasons, both visible in the stored verdicts:
+
+1. **The judge rarely says "borderline".** On claims from unsupported answers it said *yes* 15 times, *no* 4, *borderline* 3. Strict mode only helps if the judge admits a claim isn't backed up; this judge mostly doesn't, so default and strict barely differ.
+2. **Some unsupported answers are true to the passages, just not to the question.** Asked *"What is rated as the safest vehicle?"*, the model answered *"A vehicle is considered one of the safest places during a lightning storm."* A retrieved passage says exactly that. Faithfulness compares the answer with the passages, not with the question, so no faithfulness metric can catch it. (That answer is labelled *not in passages*; the misread/not-in-passages split is unreliable, as 0013 says.)
+
+Also found: for a bare answer (*"The Hub."*), DeepEval extracted **no claims**, and no claims scores 1.0 by design. TyDi answers are often this short.
+
+**What changes:** the README now says swapping evaluation libraries didn't fix the faithfulness blind spot. To catch these answers, use blind human labels (0013) or a check of the answer against the *question*. A larger judge from another model family is the untested next step.
+
+## Not done
+
+A larger judge from another model family; answer relevancy; a G-Eval correctness rubric on the 360 known-truth cases (0008); contextual precision/recall. This record answers one question.

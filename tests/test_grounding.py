@@ -56,9 +56,16 @@ def with_deepeval(runs, labels, strict, status="ok"):
     return runs
 
 
+def without_deepeval(runs):
+    for _, scores in runs.values():
+        for row in scores.values():
+            row.pop("deepeval", None)
+    return runs
+
+
 def test_deepeval_comparison_is_absent_without_its_scores():
     labels, runs, unanswerable = load()
-    a = analyze(labels, runs, unanswerable)
+    a = analyze(labels, without_deepeval(runs), unanswerable)
     assert "deepeval" not in a and "DeepEval" not in report(a)
 
 
@@ -84,7 +91,7 @@ def test_failed_deepeval_rows_block_the_comparison_instead_of_counting_as_caught
 def test_partial_deepeval_run_says_what_is_missing():
     labels, runs, unanswerable = load()
     first = sorted(labels)[0]
-    a = analyze(labels, with_deepeval(runs, {first: labels[first]}, lambda k: 1.0), unanswerable)
+    a = analyze(labels, with_deepeval(without_deepeval(runs), {first: labels[first]}, lambda k: 1.0), unanswerable)
     assert len(a["deepeval"]["not_scored"]) == 40
     assert "Not reported" in report(a)
 
@@ -98,3 +105,13 @@ def test_truncated_deepeval_prompts_block_the_comparison(tmp_path, monkeypatch):
     labels, runs, unanswerable = load()
     a = analyze(labels, with_deepeval(runs, labels, lambda k: 1.0), unanswerable)
     assert a["deepeval"] == {"truncations": 2} and "truncated 2" in report(a)
+
+
+def test_committed_deepeval_result():
+    """The published result (decision 0014): a second library on the same judge did no better."""
+    labels, runs, unanswerable = load()
+    d = analyze(labels, runs, unanswerable)["deepeval"]
+    assert [d["unsupported"][k] for k in ("ragas", "deepeval_default", "deepeval_strict")] == [13, 14, 12]
+    assert [d["supported"][k] for k in ("ragas", "deepeval_default", "deepeval_strict")] == [17, 18, 18]
+    c = d["caught_unsupported"]
+    assert (c["ragas"], c["deepeval_strict"], c["only_ragas"], c["only_deepeval"], c["p"]) == (3, 4, 0, 1, 1.0)
